@@ -6,13 +6,13 @@ SQRT_2 = 1.4
 
 
 class Edge:
-    def __init__(self, origin: "SubGoal", destiny: "SubGoal", weight: int):
+    def __init__(self, origin: "Vertex", destiny: "Vertex", weight: int):
         self.origin = origin
         self.destiny = destiny
         self.weight = weight
 
 
-class SubGoal:
+class Vertex:
     def __init__(self, x: int, y: int):
         self.x = x
         self.y = y
@@ -41,7 +41,7 @@ class SubGoal:
             curr = (curr[0] + dir_x, curr[1] + dir_y)
             horizontal = self.__clearence(curr, dir_x, 0, grid, horizontal)
             vertical = self.__clearence(curr, 0, dir_y, grid, vertical)
-            if type(grid[curr[1]][curr[0]]) == SubGoal:
+            if type(grid[curr[1]][curr[0]]) == Vertex:
                 self.add_edge(grid[curr[1]][curr[0]])
 
     def __has_diagonal(
@@ -70,28 +70,28 @@ class SubGoal:
             return False
         return True
 
-    def a_graph_search(self, destiny: "SubGoal", skip: list[str] = []):
+    def a_graph_search(self, destiny: "Vertex", skip: list[str] = []):
         key = str(self.x) + "," + str(self.y)
-        opened_nodes: dict[str, tuple[int, SubGoal, str]] = {key: (0, self, None)}
-        closed_nodes: dict[str, tuple[int, SubGoal, str]] = {}
+        opened_nodes: dict[str, tuple[int, Vertex, str]] = {key: (0, self, None)}
+        closed_nodes: dict[str, tuple[int, Vertex, str]] = {}
         while opened_nodes:
             lowest = min(opened_nodes.values(), key=lambda t: t[0])[1]
             key = str(lowest.x) + "," + str(lowest.y)
-            curr_weight, curr_subgoal, father_key = opened_nodes.pop(key)
-            if curr_subgoal == destiny:
-                path: list[SubGoal] = []
-                path.append(curr_subgoal)
+            curr_weight, curr_vertex, father_key = opened_nodes.pop(key)
+            if curr_vertex == destiny:
+                path: list[Vertex] = []
+                path.append(curr_vertex)
                 father = closed_nodes[father_key]
-                total_weight = curr_subgoal.edges[father_key].weight
+                total_weight = curr_vertex.edges[father_key].weight
                 while father[2] != None:
                     path.append(father[1])
                     total_weight += father[1].edges[father[2]].weight
                     father = closed_nodes[father[2]]
                 path.append(father[1])
                 return path, total_weight
-            closed_nodes[key] = (curr_weight, curr_subgoal, father_key)
-            for edge in curr_subgoal.edges:
-                curr_edge = curr_subgoal.edges[edge]
+            closed_nodes[key] = (curr_weight, curr_vertex, father_key)
+            for edge in curr_vertex.edges:
+                curr_edge = curr_vertex.edges[edge]
                 next = curr_edge.destiny
                 distance = next.h_distance(destiny)
                 next_key = str(next.x) + "," + str(next.y)
@@ -123,10 +123,10 @@ class SubGoal:
         while opened_nodes:
             lowest = min(opened_nodes.values(), key=lambda t: t[0])[1]
             key = str(lowest[0]) + "," + str(lowest[1])
-            curr_weight, curr_subgoal, father_key = opened_nodes.pop(key)
-            if curr_subgoal == destiny:
+            curr_weight, curr_vertex, father_key = opened_nodes.pop(key)
+            if curr_vertex == destiny:
                 path: list[tuple[int, int]] = []
-                path.append(curr_subgoal)
+                path.append(curr_vertex)
                 father = closed_nodes[father_key]
                 while father[2] != None:
                     path.append(father[1])
@@ -134,7 +134,7 @@ class SubGoal:
                 path.append(father[1])
                 path.reverse()
                 return path, curr_weight
-            closed_nodes[key] = (curr_weight, curr_subgoal, father_key)
+            closed_nodes[key] = (curr_weight, curr_vertex, father_key)
             movements: list[tuple[int, int]] = [
                 (1, -1),
                 (1, 0),
@@ -147,8 +147,8 @@ class SubGoal:
             ]
             for x in range(8):
                 next = (
-                    movements[x][0] + curr_subgoal[0],
-                    movements[x][1] + curr_subgoal[1],
+                    movements[x][0] + curr_vertex[0],
+                    movements[x][1] + curr_vertex[1],
                 )
                 next_key = str(next[0]) + "," + str(next[1])
                 next_weight = int(10 * ((SQRT_2 * ((x + 1) & 1)) or 1))
@@ -162,7 +162,7 @@ class SubGoal:
                     or grid[next[1]][next[0]] == 0
                     or (
                         ((x + 1) & 1)
-                        and not self.__has_diagonal(curr_subgoal, *movements[x], grid)
+                        and not self.__has_diagonal(curr_vertex, *movements[x], grid)
                     )
                 ):
                     continue
@@ -182,20 +182,20 @@ class SubGoal:
 
         return [], -1
 
-    def h_reachable(self, destiny: "SubGoal", grid: list[list]):
+    def h_reachable(self, destiny: "Vertex", grid: list[list]):
         return self.h_distance(destiny) == self.a_graph_search(destiny, grid)[1]
 
-    def h_distance(self, subgoal: "SubGoal"):
-        dist_x = abs(self.x - subgoal.x)
-        dist_y = abs(self.y - subgoal.y)
+    def h_distance(self, vertex: "Vertex"):
+        dist_x = abs(self.x - vertex.x)
+        dist_y = abs(self.y - vertex.y)
         return int(10 * (abs(dist_x - dist_y) + min(dist_x, dist_y) * SQRT_2))
 
-    def add_edge(self, subgoal: "SubGoal"):
-        key = str(subgoal.x) + "," + str(subgoal.y)
+    def add_edge(self, vertex: "Vertex"):
+        key = str(vertex.x) + "," + str(vertex.y)
         if not self.edges.get(key):
-            weight = self.h_distance(subgoal)
-            self.edges[key] = Edge(self, subgoal, weight)
-            subgoal.add_edge(self)
+            weight = self.h_distance(vertex)
+            self.edges[key] = Edge(self, vertex, weight)
+            vertex.add_edge(self)
 
     def del_edge(self, x: int, y: int):
         key = str(x) + "," + str(y)
@@ -203,8 +203,8 @@ class SubGoal:
             edge = self.edges.pop(key)
             edge.destiny.del_edge(self.x, self.y)
 
-    def __can_reduce(self, destiny: "SubGoal", distance: int):
-        queue: list[tuple[int, SubGoal]] = []
+    def __can_reduce(self, destiny: "Vertex", distance: int):
+        queue: list[tuple[int, Vertex]] = []
         key = str(destiny.x) + "," + str(destiny.y)
         for edge in self.edges:
             if edge == key:
@@ -227,10 +227,10 @@ class SubGoal:
     def reduce_edges(self):
         keys_to_reduce = list(self.edges.keys())
         for key in keys_to_reduce:
-            subgoal = self.edges[key].destiny
+            vertex = self.edges[key].destiny
             edge_weight = self.edges[key].weight
-            if self.__can_reduce(subgoal, edge_weight):
-                self.del_edge(subgoal.x, subgoal.y)
+            if self.__can_reduce(vertex, edge_weight):
+                self.del_edge(vertex.x, vertex.y)
 
     def __clearence(
         self,
@@ -250,7 +250,7 @@ class SubGoal:
         ):
             if grid[curr[1]][curr[0]] == 0:
                 return max
-            if type(grid[curr[1]][curr[0]]) == SubGoal:
+            if type(grid[curr[1]][curr[0]]) == Vertex:
                 if create:
                     self.add_edge(grid[curr[1]][curr[0]])
                 return max
@@ -260,7 +260,7 @@ class SubGoal:
 
 
 def create_verices(grid: list[list]):
-    vertices: dict[str, SubGoal] = {}
+    vertices: dict[str, Vertex] = {}
 
     def check_diagonal(x: int, y: int, dir_x: int, dir_y: int, grid: list[list]):
         pos = (x + dir_x, y + dir_y)
@@ -287,16 +287,16 @@ def create_verices(grid: list[list]):
             key = str(x) + "," + str(y)
             # Superior Esquerda
             if check_diagonal(x, y, -1, -1, grid):
-                vertices[key] = SubGoal(x, y)
+                vertices[key] = Vertex(x, y)
             # Superior Direita
             elif check_diagonal(x, y, 1, -1, grid):
-                vertices[key] = SubGoal(x, y)
+                vertices[key] = Vertex(x, y)
             # Inferior Direita
             elif check_diagonal(x, y, 1, 1, grid):
-                vertices[key] = SubGoal(x, y)
+                vertices[key] = Vertex(x, y)
             # Inferior Esquerda
             elif check_diagonal(x, y, -1, 1, grid):
-                vertices[key] = SubGoal(x, y)
+                vertices[key] = Vertex(x, y)
             else:
                 continue
             grid[y][x] = vertices[key]
@@ -316,7 +316,7 @@ def create_grid(file_name):
     return grid
 
 
-def reduce_goals(vertices: dict[str, SubGoal], grid: list[list]):
+def reduce_goals(vertices: dict[str, Vertex], grid: list[list]):
     to_delete: list[str] = []
     movements: tuple[int, int] = [
         (1, -1),
@@ -361,7 +361,7 @@ def create_ssg(grid: list[list]):
 
     start = time.time()
     vertices = reduce_goals(vertices, grid)
-    print(f"Goals reduced in {time.time() - start} seconds")
+    print(f"{len(vertices)} vertices reduced in {time.time() - start} seconds")
     start = time.time()
     for x in vertices:
         vert = vertices[x]
@@ -376,14 +376,14 @@ def create_ssg(grid: list[list]):
     return vertices
 
 
-def create_tsg(vertices: dict[str, SubGoal], grid: list[list]):
+def create_tsg(vertices: dict[str, Vertex], grid: list[list]):
     start = time.time()
-    global_goals: dict[str, SubGoal] = dict(vertices)
-    local_goals: dict[str, SubGoal] = {}
+    global_goals: dict[str, Vertex] = dict(vertices)
+    local_goals: dict[str, Vertex] = {}
     idx = 1
     for s in vertices:
         vert = vertices[s]
-        new_edges: dict[str, tuple[SubGoal, SubGoal]] = {}
+        new_edges: dict[str, tuple[Vertex, Vertex]] = {}
         local: bool = True
         visited_edges: set[str] = set()
         print(f"{idx}/{len(vertices)}")
