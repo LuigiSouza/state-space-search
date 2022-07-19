@@ -33,7 +33,9 @@ class SubGoal:
         # top left
         self.__expand_diagonal(-1, -1, max_left, max_top, grid)
 
-    def __expand_diagonal(self, dir_x: int, dir_y: int, horizontal: int, vertical: int, grid: list[list]):
+    def __expand_diagonal(
+        self, dir_x: int, dir_y: int, horizontal: int, vertical: int, grid: list[list]
+    ):
         curr = (self.x, self.y)
         while self.__has_diagonal(curr, dir_x, dir_y, grid):
             curr = (curr[0] + dir_x, curr[1] + dir_y)
@@ -68,40 +70,120 @@ class SubGoal:
             return False
         return True
 
-    def a_search(self, destiny: "SubGoal", skip: list[str] = []):
+    def a_graph_search(self, destiny: "SubGoal", skip: list[str] = []):
         key = str(self.x) + "," + str(self.y)
-        open_nodes: dict[str, tuple[int, SubGoal, str]] = {key: (0, self, None)}
+        opened_nodes: dict[str, tuple[int, SubGoal, str]] = {key: (0, self, None)}
         closed_nodes: dict[str, tuple[int, SubGoal, str]] = {}
-        while open_nodes:
-            lowest = min(open_nodes.values(), key=lambda t: t[0])[1]
+        while opened_nodes:
+            lowest = min(opened_nodes.values(), key=lambda t: t[0])[1]
             key = str(lowest.x) + "," + str(lowest.y)
-            curr_distance, curr_subgoal, father_key = open_nodes.pop(key)
+            curr_weight, curr_subgoal, father_key = opened_nodes.pop(key)
             if curr_subgoal == destiny:
                 path: list[SubGoal] = []
+                path.append(curr_subgoal)
+                father = closed_nodes[father_key]
+                total_weight = curr_subgoal.edges[father_key].weight
+                while father[2] != None:
+                    path.append(father[1])
+                    total_weight += father[1].edges[father[2]].weight
+                    father = closed_nodes[father[2]]
+                path.append(father[1])
+                return path, total_weight
+            closed_nodes[key] = (curr_weight, curr_subgoal, father_key)
+            for edge in curr_subgoal.edges:
+                curr_edge = curr_subgoal.edges[edge]
+                next = curr_edge.destiny
+                distance = next.h_distance(destiny)
+                next_key = str(next.x) + "," + str(next.y)
+                if next_key in closed_nodes or next_key in skip:
+                    continue
+                if next_key in opened_nodes:
+                    new_w = min(
+                        curr_weight + curr_edge.weight + distance,
+                        opened_nodes[next_key][0],
+                    )
+                    if new_w == opened_nodes[next_key][0]:
+                        continue
+                    opened_nodes[next_key] = (new_w, next, key)
+                else:
+                    opened_nodes[next_key] = (
+                        curr_weight + curr_edge.weight + distance,
+                        next,
+                        key,
+                    )
+
+        return [], -1
+
+    def a_grid_search(self, destiny: tuple[int, int], grid: list[list], limit: int = 0):
+        key = str(self.x) + "," + str(self.y)
+        opened_nodes: dict[str, tuple[int, tuple[int, int], str]] = {
+            key: (0, (self.x, self.y), None)
+        }
+        closed_nodes: dict[str, tuple[int, tuple[int, int], str]] = {}
+        while opened_nodes:
+            lowest = min(opened_nodes.values(), key=lambda t: t[0])[1]
+            key = str(lowest[0]) + "," + str(lowest[1])
+            curr_weight, curr_subgoal, father_key = opened_nodes.pop(key)
+            if curr_subgoal == destiny:
+                path: list[tuple[int, int]] = []
                 path.append(curr_subgoal)
                 father = closed_nodes[father_key]
                 while father[2] != None:
                     path.append(father[1])
                     father = closed_nodes[father[2]]
-                return path, curr_distance
-            closed_nodes[key] = (curr_distance, curr_subgoal, father_key)
-            for edge in curr_subgoal.edges:
-                curr_edge = curr_subgoal.edges[edge]
-                next = curr_edge.destiny
-                next_key = str(next.x) + "," + str(next.y)
-                if next_key in closed_nodes or next_key in skip:
+                path.append(father[1])
+                path.reverse()
+                return path, curr_weight
+            closed_nodes[key] = (curr_weight, curr_subgoal, father_key)
+            movements: list[tuple[int, int]] = [
+                (1, -1),
+                (1, 0),
+                (1, 1),
+                (0, 1),
+                (-1, 1),
+                (-1, 0),
+                (-1, -1),
+                (0, -1),
+            ]
+            for x in range(8):
+                next = (
+                    movements[x][0] + curr_subgoal[0],
+                    movements[x][1] + curr_subgoal[1],
+                )
+                next_key = str(next[0]) + "," + str(next[1])
+                next_weight = int(10 * ((SQRT_2 * ((x + 1) & 1)) or 1))
+                distance = abs(destiny[0] - next[0]) + abs(destiny[1] - next[1])
+                if (
+                    next_key in closed_nodes
+                    or next[0] < 0
+                    or next[1] < 0
+                    or next[1] >= len(grid)
+                    or next[0] >= len(grid[next[1]])
+                    or grid[next[1]][next[0]] == 0
+                    or (
+                        ((x + 1) & 1)
+                        and not self.__has_diagonal(curr_subgoal, *movements[x], grid)
+                    )
+                ):
                     continue
-                if next_key in open_nodes:
-                    distance = min(curr_distance + curr_edge.weight, open_nodes[next_key][0])
-                    if distance == open_nodes[next_key][0]:
+                if next_key in opened_nodes:
+                    new_w = min(
+                        curr_weight + next_weight + distance, opened_nodes[next_key][0]
+                    )
+                    if new_w == opened_nodes[next_key][0]:
                         continue
-                    open_nodes[next_key] = (distance, next, key)
+                    opened_nodes[next_key] = (new_w, next, key)
                 else:
-                    open_nodes[next_key] = (curr_distance + curr_edge.weight, next, key)
-                
+                    opened_nodes[next_key] = (
+                        curr_weight + next_weight + distance,
+                        next,
+                        key,
+                    )
+
         return [], -1
-    def h_reachable(self, destiny: "SubGoal"):
-        pass
+
+    def h_reachable(self, destiny: "SubGoal", grid: list[list]):
+        return self.h_distance(destiny) == self.a_graph_search(destiny, grid)[1]
 
     def h_distance(self, subgoal: "SubGoal"):
         dist_x = abs(self.x - subgoal.x)
@@ -136,7 +218,9 @@ class SubGoal:
                 return True
             for edge in vertice.edges:
                 next = vertice.edges[edge].destiny
-                if vertice.edges[edge].weight == remaining_distance - next.h_distance(destiny):
+                if vertice.edges[edge].weight == remaining_distance - next.h_distance(
+                    destiny
+                ):
                     queue.append((curr_distance + vertice.edges[edge].weight, next))
         return False
 
@@ -155,6 +239,7 @@ class SubGoal:
         dir_y: int,
         grid: list[list],
         limit: int = -1,
+        create: bool = True,
     ):
         curr = (origin[0] + dir_x, origin[1] + dir_y)
         max: int = 0
@@ -166,50 +251,51 @@ class SubGoal:
             if grid[curr[1]][curr[0]] == 0:
                 return max
             if type(grid[curr[1]][curr[0]]) == SubGoal:
-                self.add_edge(grid[curr[1]][curr[0]])
+                if create:
+                    self.add_edge(grid[curr[1]][curr[0]])
                 return max
             curr = (curr[0] + dir_x, curr[1] + dir_y)
             max += 1
         return max
 
 
-def create_verices(grid):
+def create_verices(grid: list[list]):
     vertices: dict[str, SubGoal] = {}
+
+    def check_diagonal(x: int, y: int, dir_x: int, dir_y: int, grid: list[list]):
+        pos = (x + dir_x, y + dir_y)
+        if (
+            x < 0
+            or y < 0
+            or y >= len(grid)
+            or x >= len(grid[y])
+            or pos[0] < 0
+            or pos[1] < 0
+            or pos[1] >= len(grid)
+            or pos[0] >= len(grid[pos[1]])
+        ):
+            return False
+        return (
+            grid[y + dir_y][x + dir_x] == 0
+            and grid[y][x + dir_x] == 1 == grid[y + dir_y][x]
+        )
+
     for y, row in enumerate(grid):
         for x, value in enumerate(row):
             if value == 0:
                 continue
             key = str(x) + "," + str(y)
             # Superior Esquerda
-            if (
-                y > 0 < x
-                and grid[y - 1][x - 1] == 0
-                and grid[y][x - 1] == 1 == grid[y - 1][x]
-            ):
+            if check_diagonal(x, y, -1, -1, grid):
                 vertices[key] = SubGoal(x, y)
             # Superior Direita
-            elif (
-                x > 0
-                and y < len(grid) - 1
-                and grid[y + 1][x - 1] == 0
-                and grid[y][x - 1] == 1 == grid[y + 1][x]
-            ):
+            elif check_diagonal(x, y, 1, -1, grid):
                 vertices[key] = SubGoal(x, y)
             # Inferior Direita
-            elif (
-                x < len(row) - 1
-                and y < len(grid) - 1
-                and grid[y + 1][x + 1] == 0
-                and grid[y][x + 1] == 1 == grid[y + 1][x]
-            ):
+            elif check_diagonal(x, y, 1, 1, grid):
                 vertices[key] = SubGoal(x, y)
             # Inferior Esquerda
-            elif (
-                x < len(row) - 1
-                and y > 0
-                and grid[y - 1][x + 1] == 0
-                and grid[y][x + 1] == 1 == grid[y - 1][x]
-            ):
+            elif check_diagonal(x, y, -1, 1, grid):
                 vertices[key] = SubGoal(x, y)
             else:
                 continue
@@ -232,14 +318,14 @@ def create_grid(file_name):
 
 def create_ssg(file_name):
     start = time.time()
-    # grid = create_grid(file_name)
-    grid = [
-        [1, 1, 1, 1, 1, 1, 0, 1],
-        [1, 0, 0, 1, 1, 1, 0, 1],
-        [1, 1, 1, 1, 1, 1, 0, 1],
-        [1, 1, 1, 1, 1, 1, 0, 1],
-        [1, 1, 1, 1, 1, 1, 1, 1],
-    ]
+    grid = create_grid(file_name)
+    # grid = [
+    #     [1, 1, 1, 1, 1, 1, 0, 1],
+    #     [1, 0, 0, 1, 1, 1, 0, 1],
+    #     [1, 1, 1, 1, 1, 1, 0, 1],
+    #     [1, 1, 1, 1, 1, 1, 0, 1],
+    #     [1, 1, 1, 1, 1, 1, 1, 1],
+    # ]
     print(f"{len(grid)}x{len(grid[0])} grid created in {time.time() - start} seconds")
     start = time.time()
     vertices = create_verices(grid)
@@ -258,25 +344,31 @@ def create_ssg(file_name):
     print(f"Nodes reduced in {time.time() - start} seconds")
     return grid, vertices
 
-def create_tsg(vertices: dict[str, SubGoal]):
-    global_goals: dict[str, SubGoal] = {}
-    local_goals: dict[str, SubGoal] = {} 
+
+def create_tsg(vertices: dict[str, SubGoal], grid: list[list]):
+    start = time.time()
+    global_goals: dict[str, SubGoal] = dict(vertices)
+    local_goals: dict[str, SubGoal] = {}
+    idx = 1
     for s in vertices:
         vert = vertices[s]
         new_edges: dict[str, tuple[SubGoal, SubGoal]] = {}
         local: bool = True
+        visited_edges: set[str] = set()
+        # print(f"{idx}/{len(vertices)}")
+        idx += 1
         for p in vert.edges:
             for q in vert.edges:
-                if p == q:
+                if p == q or (q, p) in visited_edges:
                     continue
-                skip = [x for x in local_goals]
+                visited_edges.add((p, q))
+                skip = [x for x in local_goals if x != p and x != q]
                 skip.append(s)
                 origin = vert.edges[p].destiny
                 destiny = vert.edges[q].destiny
-                _, d  = origin.a_search(destiny, skip)
-                print("distance: ", p, d, q, vert.edges[p].weight, vert.edges[q].weight)            
-                if d > vert.edges[p].weight + vert.edges[q].weight:
-                    if origin.h_reachable(destiny):
+                _, d = origin.a_graph_search(destiny, skip)
+                if d == -1 or d > vert.edges[p].weight + vert.edges[q].weight:
+                    if origin.h_reachable(destiny, grid):
                         check_key = q + "," + p
                         if check_key not in new_edges:
                             new_edges[p + "," + q] = (origin, destiny)
@@ -290,33 +382,60 @@ def create_tsg(vertices: dict[str, SubGoal]):
                 edge_tuple = new_edges[edge]
                 edge_tuple[0].add_edge(edge_tuple[1])
             local_goals[s] = vert
-    global_goals = [{x: global_goals[x]} for x in global_goals if x not in local_goals]
+    global_goals = dict(
+        [(x, global_goals[x]) for x in global_goals if x not in local_goals]
+    )
+    print("Time to create TSG:", time.time() - start)
 
     return global_goals, local_goals
 
+
 def main():
     grid, vertices = create_ssg("input.map")
-    global_goals, local_goals = create_tsg(vertices)
-    print(global_goals)
-    print(local_goals)
+    global_goals, local_goals = create_tsg(vertices, grid)
 
-    
     start = time.time()
     plot_grid = [
         [[y * 255, y * 255, y * 255] if type(y) == int else [255, 0, 0] for y in x]
         for x in grid
     ]
     plt.imshow(plot_grid)
-    edges = set()
+    total_edges = set()
+    global_edges = set()
+    local_edges = set()
+    for x in global_goals:
+        vert = global_goals[x]
+        for edge in vert.edges:
+            destiny = vert.edges[edge].destiny
+            if (destiny.x, destiny.y, vert.x, vert.y) in total_edges:
+                continue
+            total_edges.add((vert.x, vert.y, destiny.x, destiny.y))
+    for x in global_goals:
+        vert = global_goals[x]
+        for edge in vert.edges:
+            destiny = vert.edges[edge].destiny
+            destiny_str = str(destiny.x) + "," + str(destiny.y)
+            if (
+                destiny.x,
+                destiny.y,
+                vert.x,
+                vert.y,
+            ) in global_edges or destiny_str in local_goals:
+                continue
+            global_edges.add((vert.x, vert.y, destiny.x, destiny.y))
+            plt.plot([vert.x, destiny.x], [vert.y, destiny.y], "g-", lw=0.5)
     for x in local_goals:
         vert = local_goals[x]
         for edge in vert.edges:
             destiny = vert.edges[edge].destiny
-            if (destiny.x, destiny.y, vert.x, vert.y) in edges:
+            if (destiny.x, destiny.y, vert.x, vert.y) in local_edges:
                 continue
-            edges.add((vert.x, vert.y, destiny.x, destiny.y))
-            plt.plot([vert.x, destiny.x], [vert.y, destiny.y], "g-", lw=0.5)
-    print("Total edges:", len(edges))
+            local_edges.add((vert.x, vert.y, destiny.x, destiny.y))
+            # plt.plot([vert.x, destiny.x], [vert.y, destiny.y], "g-", lw=0.5)
+    print(
+        f"Global edges: {len(global_edges)} = {len(total_edges)} - {len(local_edges)}"
+    )
+    print(f"Global Goals: {len(global_goals)} = {len(vertices)} - {len(local_goals)}")
     print(f"Plot created in {time.time() - start} seconds")
     plt.show()
 
