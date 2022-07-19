@@ -72,24 +72,24 @@ class Vertex:
 
     def a_graph_search(self, destiny: "Vertex", skip: list[str] = []):
         key = str(self.x) + "," + str(self.y)
-        opened_nodes: dict[str, tuple[int, Vertex, str]] = {key: (0, self, None)}
-        closed_nodes: dict[str, tuple[int, Vertex, str]] = {}
+        opened_nodes: dict[str, tuple[int, int, Vertex, str]] = {
+            key: (0, 0, self, None)
+        }
+        closed_nodes: dict[str, tuple[int, int, Vertex, str]] = {}
         while opened_nodes:
-            lowest = min(opened_nodes.values(), key=lambda t: t[0])[1]
+            lowest = min(opened_nodes.values(), key=lambda t: t[0])[2]
             key = str(lowest.x) + "," + str(lowest.y)
-            curr_weight, curr_vertex, father_key = opened_nodes.pop(key)
+            curr_weight, total_weight, curr_vertex, father_key = opened_nodes.pop(key)
             if curr_vertex == destiny:
                 path: list[Vertex] = []
                 path.append(curr_vertex)
                 father = closed_nodes[father_key]
-                total_weight = curr_vertex.edges[father_key].weight
-                while father[2] != None:
-                    path.append(father[1])
-                    total_weight += father[1].edges[father[2]].weight
-                    father = closed_nodes[father[2]]
-                path.append(father[1])
+                while father[3] != None:
+                    path.append(father[2])
+                    father = closed_nodes[father[3]]
+                path.append(father[2])
                 return path, total_weight
-            closed_nodes[key] = (curr_weight, curr_vertex, father_key)
+            closed_nodes[key] = (curr_weight, total_weight, curr_vertex, father_key)
             for edge in curr_vertex.edges:
                 curr_edge = curr_vertex.edges[edge]
                 next = curr_edge.destiny
@@ -104,10 +104,16 @@ class Vertex:
                     )
                     if new_w == opened_nodes[next_key][0]:
                         continue
-                    opened_nodes[next_key] = (new_w, next, key)
+                    opened_nodes[next_key] = (
+                        new_w,
+                        total_weight + curr_edge.weight,
+                        next,
+                        key,
+                    )
                 else:
                     opened_nodes[next_key] = (
                         curr_weight + curr_edge.weight + distance,
+                        total_weight + curr_edge.weight,
                         next,
                         key,
                     )
@@ -346,13 +352,6 @@ def reduce_goals(vertices: dict[str, Vertex], grid: list[list]):
 def create_ssg(grid: list[list]):
     ssg_time = time.time()
     start = time.time()
-    # grid = [
-    #     [1, 1, 1, 1, 1, 1, 0, 1],
-    #     [1, 0, 0, 1, 1, 1, 0, 1],
-    #     [1, 1, 1, 1, 1, 1, 0, 1],
-    #     [1, 1, 1, 1, 1, 1, 0, 1],
-    #     [1, 1, 1, 1, 1, 1, 1, 1],
-    # ]
     print(f"{len(grid)}x{len(grid[0])} grid created in {time.time() - start} seconds")
     start = time.time()
     vertices = create_verices(grid)
@@ -361,7 +360,7 @@ def create_ssg(grid: list[list]):
 
     start = time.time()
     vertices = reduce_goals(vertices, grid)
-    print(f"{len(vertices)} vertices reduced in {time.time() - start} seconds")
+    print(f"Reduced to {len(vertices)} vertices in {time.time() - start} seconds")
     start = time.time()
     for x in vertices:
         vert = vertices[x]
@@ -386,7 +385,8 @@ def create_tsg(vertices: dict[str, Vertex], grid: list[list]):
         new_edges: dict[str, tuple[Vertex, Vertex]] = {}
         local: bool = True
         visited_edges: set[str] = set()
-        print(f"{idx}/{len(vertices)}")
+        if not idx % int((len(vertices) / 5)):
+            print(f"{idx}/{len(vertices)}")
         idx += 1
         for p in vert.edges:
             for q in vert.edges:
@@ -422,7 +422,14 @@ def create_tsg(vertices: dict[str, Vertex], grid: list[list]):
 
 
 def main():
-    grid = create_grid("input2.map")
+    grid = create_grid("maps/Denver_2_1024.map")
+    # grid = [
+    #     [1, 1, 1, 1, 1, 1, 0, 1],
+    #     [1, 0, 0, 1, 1, 1, 0, 1],
+    #     [1, 1, 1, 1, 1, 1, 0, 1],
+    #     [1, 1, 1, 1, 1, 1, 0, 1],
+    #     [1, 1, 1, 1, 1, 1, 1, 1],
+    # ]
     vertices = create_ssg(grid)
     global_goals, local_goals = create_tsg(vertices, grid)
 
