@@ -316,9 +316,36 @@ def create_grid(file_name):
     return grid
 
 
-def create_ssg(file_name):
+def reduce_goals(vertices: dict[str, SubGoal], grid: list[list]):
+    to_delete: list[str] = []
+    movements: tuple[int, int] = [
+        (1, -1),
+        (1, 0),
+        (1, 1),
+        (0, 1),
+        (-1, 1),
+        (-1, 0),
+        (-1, -1),
+        (0, -1),
+    ]
+    for vertex in vertices:
+        if vertex in to_delete:
+            continue
+        goal = vertices[vertex]
+        count_neighbors = 0
+        for move in movements:
+            key = str(move[0] + goal.x) + "," + str(move[1] + goal.y)
+            if key in vertices:
+                count_neighbors += 1
+        if count_neighbors > 1:
+            grid[goal.y][goal.x] = 1
+            to_delete.append(vertex)
+    return dict([(x, vertices[x]) for x in vertices if x not in to_delete])
+
+
+def create_ssg(grid: list[list]):
+    ssg_time = time.time()
     start = time.time()
-    grid = create_grid(file_name)
     # grid = [
     #     [1, 1, 1, 1, 1, 1, 0, 1],
     #     [1, 0, 0, 1, 1, 1, 0, 1],
@@ -333,6 +360,9 @@ def create_ssg(file_name):
     print(f"{len(vertices)} vertices created in {time.time() - start} seconds")
 
     start = time.time()
+    vertices = reduce_goals(vertices, grid)
+    print(f"Goals reduced in {time.time() - start} seconds")
+    start = time.time()
     for x in vertices:
         vert = vertices[x]
         vert.generate_nodes(vertices, grid)
@@ -342,7 +372,8 @@ def create_ssg(file_name):
         vert = vertices[x]
         vert.reduce_edges()
     print(f"Nodes reduced in {time.time() - start} seconds")
-    return grid, vertices
+    print(f"SSG created in {time.time() - ssg_time} seconds")
+    return vertices
 
 
 def create_tsg(vertices: dict[str, SubGoal], grid: list[list]):
@@ -355,7 +386,7 @@ def create_tsg(vertices: dict[str, SubGoal], grid: list[list]):
         new_edges: dict[str, tuple[SubGoal, SubGoal]] = {}
         local: bool = True
         visited_edges: set[str] = set()
-        # print(f"{idx}/{len(vertices)}")
+        print(f"{idx}/{len(vertices)}")
         idx += 1
         for p in vert.edges:
             for q in vert.edges:
@@ -391,7 +422,8 @@ def create_tsg(vertices: dict[str, SubGoal], grid: list[list]):
 
 
 def main():
-    grid, vertices = create_ssg("input.map")
+    grid = create_grid("input2.map")
+    vertices = create_ssg(grid)
     global_goals, local_goals = create_tsg(vertices, grid)
 
     start = time.time()
