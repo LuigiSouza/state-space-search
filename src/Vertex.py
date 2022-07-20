@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 SQRT_2 = 1.4
 
 
@@ -100,8 +102,8 @@ class Vertex:
         if (
             x < 0
             or y < 0
-            or x >= len(grid)
-            or y >= len(grid[0])
+            or y >= len(grid)
+            or x >= len(grid[y])
             or target[0] < 0
             or target[1] < 0
             or target[1] >= len(grid)
@@ -111,7 +113,7 @@ class Vertex:
         if (
             grid[target[1]][target[0]] == 0
             or grid[target[1]][x] == 0
-            or 0 == grid[y][target[0]]
+            or grid[y][target[0]] == 0
         ):
             return False
         return True
