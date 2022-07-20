@@ -116,7 +116,7 @@ class SSG(Grid):
         for vertex in self.vertices:
             self.vertices[vertex].reduce_edges()
 
-    def creat_from_file(self, file_name: str) -> None:
+    def create_from_file(self, file_name: str) -> None:
         self.read_file(file_name)
         self.create_graph()
 
@@ -254,8 +254,8 @@ class TSG(SSG):
         super().__init__(grid)
         self.local_goals: dict[str, Vertex] = {}
 
-    def creat_from_file(self, file_name: str) -> None:
-        super().creat_from_file(file_name)
+    def create_from_file(self, file_name: str) -> None:
+        super().create_from_file(file_name)
         self.convert_to_tsg()
 
     def create_graph(self) -> None:

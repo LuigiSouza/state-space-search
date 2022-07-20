@@ -14,8 +14,8 @@ def main():
         [1, 1, 1, 1, 1, 1, 0, 1],
         [1, 1, 1, 1, 1, 1, 1, 1],
     ]
-    ssg = Grid.TSG(grid)
-    ssg.create_graph()
+    ssg = Grid.TSG()
+    ssg.create_from_file()
 
     global_edges = set()
     for x in ssg.vertices:
