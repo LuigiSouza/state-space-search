@@ -15,7 +15,7 @@ def main():
         [1, 1, 1, 1, 1, 1, 1, 1],
     ]
     ssg = Grid.TSG()
-    ssg.create_from_file()
+    ssg.create_from_file("maps/Denver_2_1024.map")
 
     global_edges = set()
     for x in ssg.vertices:
