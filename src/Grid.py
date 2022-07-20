@@ -1,3 +1,4 @@
+from __future__ import annotations
 from .Vertex import Vertex
 
 SQRT_2 = 1.4
@@ -14,12 +15,13 @@ class Grid:
         self, origin: tuple[int, int], destiny: tuple[int, int]
     ) -> tuple[list, int]:
         class Cell:
-            def __init__(self, x: int, y: int, weight: int, father: "Cell") -> None:
+            def __init__(self, x: int, y: int, weight: int, father: "Cell", order: int = 0) -> None:
                 self.x = x
                 self.y = y
                 self.father = father
                 self.weight = weight
                 self.heuristic = self.weight + Grid.h_distance((x, y), destiny)
+                self.order = order
 
             def has_diagonal(
                 self,
@@ -33,7 +35,7 @@ class Grid:
                 return self.x == target[0] and self.y == target[1]
 
             def __lt__(self, other: "Cell") -> bool:
-                return self.heuristic < other.heuristic
+                return self.heuristic < other.heuristic if self.heuristic != other.heuristic else self.order > other.order
 
         key = str(origin[0]) + "," + str(origin[1])
         opened_nodes: dict[str, Cell] = {key: Cell(origin[0], origin[1], 0, None)}
@@ -81,8 +83,9 @@ class Grid:
                     if next_weight + distance < opened_nodes[next_key].heuristic:
                         opened_nodes[next_key].heuristic = next_weight + distance
                         opened_nodes[next_key].father = curr
+                        opened_nodes[next_key].order = curr.order + 1
                 else:
-                    opened_nodes[next_key] = Cell(m_x, m_y, next_weight, curr)
+                    opened_nodes[next_key] = Cell(m_x, m_y, next_weight, curr, curr.order + 1)
 
         return [], -1
 
