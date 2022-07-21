@@ -119,7 +119,7 @@ class SSG(Grid):
 
     def create_edges(self):
         for vertex in self.vertices:
-            self.vertices[vertex].create_edges(self.grid)
+            self.vertices[vertex].create_edges()
 
     def reduce_edges(self):
         for vertex in self.vertices:
