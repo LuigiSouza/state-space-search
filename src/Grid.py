@@ -67,7 +67,8 @@ class Grid:
                 m_x = move[0] + curr.x
                 m_y = move[1] + curr.y
                 next_key = str(m_x) + "," + str(m_y)
-                next_weight = curr.weight + int(10 * ((SQRT_2 * ((idx + 1) & 1)) or 1))
+                is_diagonal = move[0] != 0 and move[1] != 0
+                next_weight = curr.weight + int(10 * ((SQRT_2 * is_diagonal) or 1))
                 if (
                     next_key in closed_nodes
                     or m_x < 0
@@ -75,7 +76,7 @@ class Grid:
                     or m_y >= len(self.grid)
                     or m_x >= len(self.grid[m_y])
                     or self.grid[m_y][m_x] == 0
-                    or (((idx + 1) & 1) and not curr.has_diagonal(*move, self.grid))
+                    or (is_diagonal and not curr.has_diagonal(*move, self.grid))
                 ):
                     continue
                 distance = Grid.h_distance((m_x, m_y), destiny)
