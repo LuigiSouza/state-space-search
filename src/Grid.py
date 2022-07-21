@@ -114,11 +114,17 @@ class SSG(Grid):
     def create_graph(self) -> None:
         self.create_verices()
         self.reduce_goals()
+        self.create_edges()
+        self.reduce_edges()
 
+    def create_edges(self):
         for vertex in self.vertices:
             self.vertices[vertex].create_edges(self.grid)
+
+    def reduce_edges(self):
         for vertex in self.vertices:
             self.vertices[vertex].reduce_edges()
+
 
     def create_from_file(self, file_name: str) -> None:
         self.read_file(file_name)
@@ -159,8 +165,9 @@ class SSG(Grid):
                     d_x = corner[0]
                     d_y = corner[1]
                     if is_corner(cell, d_x, d_y, self.grid):
-                        self.vertices[key] = Vertex(x, y)
-                        self.grid[y][x] = self.vertices[key]
+                        vertex = Vertex(x, y, self.grid)
+                        self.vertices[key] = vertex
+                        self.grid[y][x] = vertex
                         break
                 else:
                     self.grid[y][x] = 1

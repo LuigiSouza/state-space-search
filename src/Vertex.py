@@ -11,25 +11,26 @@ class Edge:
 
 
 class Vertex:
-    def __init__(self, x: int, y: int) -> None:
+    def __init__(self, x: int, y: int, grid: list[list]) -> None:
         self.x = x
         self.y = y
         self.edges: dict[str, Edge] = {}
+        self.grid = grid
 
-    def create_edges(self, grid: list[list]) -> None:
-        max_top = self.__clearence((self.x, self.y), 0, -1, grid)
-        max_bot = self.__clearence((self.x, self.y), 0, +1, grid)
-        max_left = self.__clearence((self.x, self.y), -1, 0, grid)
-        max_right = self.__clearence((self.x, self.y), +1, 0, grid)
+    def create_edges(self) -> None:
+        max_top = self.__clearence((self.x, self.y), 0, -1)
+        max_bot = self.__clearence((self.x, self.y), 0, +1)
+        max_left = self.__clearence((self.x, self.y), -1, 0)
+        max_right = self.__clearence((self.x, self.y), +1, 0)
         # Explorar diagonais
         # top right
-        self.__expand_diagonal(+1, -1, max_right, max_top, grid)
+        self.__expand_diagonal(+1, -1, max_right, max_top)
         # bottom right
-        self.__expand_diagonal(+1, +1, max_right, max_bot, grid)
+        self.__expand_diagonal(+1, +1, max_right, max_bot)
         # bottom left
-        self.__expand_diagonal(-1, +1, max_left, max_bot, grid)
+        self.__expand_diagonal(-1, +1, max_left, max_bot)
         # top left
-        self.__expand_diagonal(-1, -1, max_left, max_top, grid)
+        self.__expand_diagonal(-1, -1, max_left, max_top)
 
     def h_distance(self, destiny: "Vertex") -> int:
         dist_x = abs(self.x - destiny.x)
@@ -57,16 +58,14 @@ class Vertex:
             if self.__can_reduce(vertex, edge_weight):
                 self.del_edge(vertex.x, vertex.y)
 
-    def __expand_diagonal(
-        self, dir_x: int, dir_y: int, lim_h: int, lim_v: int, grid: list[list]
-    ) -> None:
+    def __expand_diagonal(self, dir_x: int, dir_y: int, lim_h: int, lim_v: int) -> None:
         curr = (self.x, self.y)
-        while Vertex.has_diagonal(curr, dir_x, dir_y, grid):
+        while Vertex.has_diagonal(curr, dir_x, dir_y, self.grid):
             curr = (curr[0] + dir_x, curr[1] + dir_y)
-            lim_h = self.__clearence(curr, dir_x, 0, grid, lim_h)
-            lim_v = self.__clearence(curr, 0, dir_y, grid, lim_v)
-            if type(grid[curr[1]][curr[0]]) == Vertex:
-                self.add_edge(grid[curr[1]][curr[0]])
+            lim_h = self.__clearence(curr, dir_x, 0, lim_h)
+            lim_v = self.__clearence(curr, 0, dir_y, lim_v)
+            if type(self.grid[curr[1]][curr[0]]) == Vertex:
+                self.add_edge(self.grid[curr[1]][curr[0]])
 
     def __can_reduce(self, destiny: "Vertex", distance: int) -> bool:
         queue: list[tuple[int, Vertex]] = []
@@ -123,7 +122,6 @@ class Vertex:
         origin: tuple[int, int],
         dir_x: int,
         dir_y: int,
-        grid: list[list],
         limit: int = -1,
         create: bool = True,
     ) -> int:
@@ -131,14 +129,14 @@ class Vertex:
         max: int = 0
         while (
             (limit == -1 or max < limit)
-            and 0 <= curr[1] < len(grid)
-            and 0 <= curr[0] < len(grid[curr[1]])
+            and 0 <= curr[1] < len(self.grid)
+            and 0 <= curr[0] < len(self.grid[curr[1]])
         ):
-            if grid[curr[1]][curr[0]] == 0:
+            if self.grid[curr[1]][curr[0]] == 0:
                 return max
-            if type(grid[curr[1]][curr[0]]) == Vertex:
+            if type(self.grid[curr[1]][curr[0]]) == Vertex:
                 if create:
-                    self.add_edge(grid[curr[1]][curr[0]])
+                    self.add_edge(self.grid[curr[1]][curr[0]])
                 return max
             curr = (curr[0] + dir_x, curr[1] + dir_y)
             max += 1
