@@ -114,22 +114,47 @@ class SSG(Grid):
 
     def create_graph(self) -> None:
         self.create_verices()
-        self.reduce_goals()
+        self.reduce_vertices()
         self.create_edges()
         self.reduce_edges()
 
-    def create_edges(self):
+    def create_edges(self) -> None:
         for vertex in self.vertices:
             self.vertices[vertex].create_edges()
 
-    def reduce_edges(self):
+    def reduce_edges(self) -> None:
         for vertex in self.vertices:
             self.vertices[vertex].reduce_edges()
-
 
     def create_from_file(self, file_name: str) -> None:
         self.read_file(file_name)
         self.create_graph()
+
+    def a_grid_graph_search(self, origin: tuple[int, int], destiny: tuple[int ,int]) -> bool:
+        if self.grid[origin[1]][origin[0]] == 0 or self.grid[destiny[1]][destiny[0]] == 0:
+            return -1, []
+        start_is_vertex = False
+        end_is_vertex = False
+        if self.grid[origin[1]][origin[0]] == 1:
+            vertex = Vertex(origin[0], origin[1], self.grid)
+            key = str(origin[0]) + "," + str(origin[1])
+            self.grid[origin[1]][origin[0]] = vertex
+            start_is_vertex = True
+        if self.grid[destiny[1]][destiny[0]] == 1:
+            vertex = Vertex(destiny[0], destiny[1], self.grid)
+            key = str(destiny[0]) + "," + str(destiny[1])
+            self.grid[destiny[1]][destiny[0]] = vertex
+            self.vertices[key] = vertex
+            end_is_vertex = True
+        start: Vertex = self.grid[origin[1]][origin[0]]    
+        end: Vertex = self.grid[destiny[1]][destiny[0]]    
+        start.create_edges()
+        start.reduce_edges()
+        end.create_edges()
+        end.reduce_edges()
+        self.start = start
+        self.end = end
+        return True
 
     def create_verices(self) -> None:
         def is_corner(cell: tuple[int, int], dir_x: int, dir_y: int, grid: list[list]):
@@ -173,7 +198,7 @@ class SSG(Grid):
                 else:
                     self.grid[y][x] = 1
 
-    def reduce_goals(self) -> None:
+    def reduce_vertices(self) -> None:
         to_delete: list[str] = []
         movements: tuple[int, int] = [
             (1, -1),
