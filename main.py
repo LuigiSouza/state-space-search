@@ -1,6 +1,6 @@
 from __future__ import annotations
 import matplotlib.pyplot as plt
-import time
+from time import time
 
 import src.Grid as Grid
 
@@ -15,31 +15,21 @@ def main():
         [1, 1, 1, 1, 1, 1, 1, 1],
     ]
     ssg = Grid.TSG()
-    ssg.create_from_file("maps/Denver_2_1024.map")
+    ssg.read_file("maps/Berlin_0_1024.map")
 
-    global_edges = set()
-    for x in ssg.vertices:
-        vert = ssg.vertices[x]
-        for edge in vert.edges:
-            destiny = vert.edges[edge].destiny
-            destiny_str = str(destiny.x) + "," + str(destiny.y)
-            if (
-                destiny.x,
-                destiny.y,
-                vert.x,
-                vert.y,
-            ) in global_edges:
-                continue
-            global_edges.add((vert.x, vert.y, destiny.x, destiny.y))
-            plt.plot([vert.x, destiny.x], [vert.y, destiny.y], "g-", lw=0.5)
     plot_grid = [
         [[y * 255, y * 255, y * 255] if type(y) == int else [255, 0, 0] for y in x]
         for x in ssg.grid
     ]
-    result, _ = ssg.a_grid_search((0, 0), (7, 0))
+    result, weight, close = ssg.a_grid_search((2, 0), (1020, 1020))
+    print("Weight: ", weight)
     plt.imshow(plot_grid)
-    for res in result:
-        plt.plot([res[0]], [res[1]], "go", lw=0.5)
+    x = [int(i.split(",")[0]) for i in close]
+    y = [int(i.split(",")[1]) for i in close]
+    plt.plot(x, y, "ro", lw=0.5)
+    x = [x for x, _ in result]
+    y = [y for _, y in result]
+    plt.plot(x, y, "go", lw=0.5)
     plt.show()
 
     return
