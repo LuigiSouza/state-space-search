@@ -4,16 +4,20 @@ SQRT_2 = 1.4
 
 
 class Edge:
-    def __init__(self, origin: "Vertex", destiny: "Vertex", weight: int) -> None:
+    def __init__(
+        self, origin: "Vertex", destiny: "Vertex", weight: int, is_local: bool = False
+    ) -> None:
         self.origin = origin
         self.destiny = destiny
         self.weight = weight
+        self.is_local = is_local
 
 
 class Vertex:
     def __init__(self, x: int, y: int, grid: list[list]) -> None:
         self.x = x
         self.y = y
+        self.key = str(x) + "," + str(y)
         self.edges: dict[str, Edge] = {}
         self.grid = grid
 
@@ -38,7 +42,7 @@ class Vertex:
         return int(10 * (abs(dist_x - dist_y) + min(dist_x, dist_y) * SQRT_2))
 
     def add_edge(self, destiny: "Vertex") -> None:
-        key = str(destiny.x) + "," + str(destiny.y)
+        key = destiny.key
         if not self.edges.get(key):
             weight = self.h_distance(destiny)
             self.edges[key] = Edge(self, destiny, weight)
@@ -69,7 +73,7 @@ class Vertex:
 
     def __can_reduce(self, destiny: "Vertex", distance: int) -> bool:
         queue: list[tuple[int, Vertex]] = []
-        key = str(destiny.x) + "," + str(destiny.y)
+        key = destiny.key
         for edge in self.edges:
             if edge == key:
                 continue
