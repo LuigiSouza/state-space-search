@@ -14,7 +14,7 @@ class Grid:
 
     def a_grid_search(
         self, origin: tuple[int, int], destiny: tuple[int, int]
-    ) -> tuple[list, int, set[str]]:
+    ) -> tuple[list[tuple[int, int]], int, list[tuple[int, int]]]:
         class Cell:
             def __init__(self, x: int, y: int, weight: int, father: "Cell") -> None:
                 self.x = x
@@ -37,7 +37,6 @@ class Grid:
             def __lt__(self, other: "Cell") -> bool:
                 return self.heuristic < other.heuristic
 
-        start = time()
         key = str(origin[0]) + "," + str(origin[1])
         opened_nodes: dict[str, Cell] = {key: Cell(origin[0], origin[1], 0, None)}
         closed_nodes: set[str] = set()
@@ -52,13 +51,13 @@ class Grid:
                     path.append((curr.x, curr.y))
                     curr = curr.father
                 path.reverse()
-                print(
-                    "A* search in grid finished in " + str(time() - start) + " seconds"
-                )
                 return (
                     path,
                     weight,
-                    closed_nodes,
+                    [
+                        (int(i.split(",")[0]), int(i.split(",")[1]))
+                        for i in closed_nodes
+                    ],
                 )
             closed_nodes.add(key)
             movements: list[tuple[int, int]] = [
@@ -95,8 +94,7 @@ class Grid:
                 else:
                     opened_nodes[next_key] = Cell(m_x, m_y, next_weight, curr)
 
-        print("A* search in grid finished in " + str(time() - start) + " seconds")
-        return [], -1, set()
+        return [], -1, []
 
     def read_file(self, file_name: str) -> None:
         start = time()
@@ -109,7 +107,7 @@ class Grid:
             self.grid = [[]] * h_size
             for index, row in enumerate(f.readlines()):
                 self.grid[index] = [1 if x == "." else 0 for x in row.strip()]
-        print("File readed in " + str(time() - start) + " seconds")
+        print(f"File readed in {time() - start} seconds")
 
     def h_distance(origin: tuple[int, int], destiny: tuple[int, int]) -> int:
         dist_x = abs(origin[0] - destiny[0])
@@ -132,13 +130,13 @@ class SSG(Grid):
         start = time()
         for vertex in self.vertices:
             self.vertices[vertex].create_edges()
-        print("Edges created in " + str(time() - start) + " seconds")
+        print(f"Edges created in {time() - start} seconds")
 
     def reduce_edges(self) -> None:
         start = time()
         for vertex in self.vertices:
             self.vertices[vertex].reduce_edges()
-        print("Edges reduced in " + str(time() - start) + " seconds")
+        print(f"Edges reduced in {time() - start} seconds")
 
     def create_from_file(self, file_name: str) -> None:
         self.read_file(file_name)
@@ -146,24 +144,26 @@ class SSG(Grid):
 
     def a_grid_graph_search(
         self, origin: tuple[int, int], destiny: tuple[int, int]
-    ) -> bool:
+    ) -> tuple[list[tuple[int, int]], int, list[tuple[int, int]]]:
+        print("-- A* Grid Graph Search --")
         if (
             self.grid[origin[1]][origin[0]] == 0
             or self.grid[destiny[1]][destiny[0]] == 0
         ):
-            return -1, []
+            return [], -1, []
         start_is_vertex = False
         end_is_vertex = False
         if self.grid[origin[1]][origin[0]] == 1:
             vertex = Vertex(origin[0], origin[1], self.grid)
-            key = str(origin[0]) + "," + str(origin[1])
+            s_key = str(origin[0]) + "," + str(origin[1])
             self.grid[origin[1]][origin[0]] = vertex
+            self.vertices[s_key] = vertex
             start_is_vertex = True
         if self.grid[destiny[1]][destiny[0]] == 1:
             vertex = Vertex(destiny[0], destiny[1], self.grid)
-            key = str(destiny[0]) + "," + str(destiny[1])
+            e_key = str(destiny[0]) + "," + str(destiny[1])
             self.grid[destiny[1]][destiny[0]] = vertex
-            self.vertices[key] = vertex
+            self.vertices[e_key] = vertex
             end_is_vertex = True
         start: Vertex = self.grid[origin[1]][origin[0]]
         end: Vertex = self.grid[destiny[1]][destiny[0]]
@@ -171,9 +171,40 @@ class SSG(Grid):
         start.reduce_edges()
         end.create_edges()
         end.reduce_edges()
-        self.start = start
-        self.end = end
-        return True
+
+        path, w = self.a_graph_search((start.x, start.y), (end.x, end.y))
+
+        if not len(path):
+            return [], -1, []
+
+        grid_weight = 0
+        vertex = path.pop(0)
+        grid_path: list[tuple[int, int]] = []
+        closed_nodes: list[tuple[int, int]] = []
+        while len(path):
+            next = path.pop(0)
+            p, w, c = self.a_grid_search((vertex.x, vertex.y), (next.x, next.y))
+            grid_weight += w
+            grid_path.extend(p)
+            closed_nodes.extend(c)
+            vertex = next
+
+        if start_is_vertex:
+            edge_keys = [str(e) for e in start.edges]
+            for e in edge_keys:
+                edge = start.edges[e]
+                start.del_edge(edge.destiny.x, edge.destiny.y)
+            self.grid[origin[1]][origin[0]] = 1
+            self.vertices.pop(s_key)
+        if end_is_vertex:
+            edge_keys = [str(e) for e in start.edges]
+            for e in edge_keys:
+                edge = start.edges[e]
+                start.del_edge(edge.destiny.x, edge.destiny.y)
+            self.grid[destiny[1]][destiny[0]] = 1
+            self.vertices.pop(e_key)
+
+        return grid_path, grid_weight, closed_nodes
 
     def create_verices(self) -> None:
         def is_corner(cell: tuple[int, int], dir_x: int, dir_y: int, grid: list[list]):
@@ -217,7 +248,7 @@ class SSG(Grid):
                         break
                 else:
                     self.grid[y][x] = 1
-        print("Vertexs created in " + str(time() - start) + " seconds")
+        print(f"Vertices created in {time() - start} seconds")
 
     def reduce_vertices(self) -> None:
         start = time()
@@ -247,7 +278,7 @@ class SSG(Grid):
         self.vertices = dict(
             [(x, self.vertices[x]) for x in self.vertices if x not in to_delete]
         )
-        print("Vertices reduced in " + str(time() - start) + " seconds")
+        print(f"{len(to_delete)} vertices reduced in {time() - start} seconds")
 
     def a_graph_search(
         self, origin: tuple[int, int], destiny: tuple[int, int], skip: list[str] = []
@@ -363,4 +394,4 @@ class TSG(SSG):
         self.vertices = dict(
             [(x, global_goals[x]) for x in global_goals if x not in self.local_goals]
         )
-        print("Vertices reduced in " + str(time() - start) + " seconds")
+        print(f"Vertices reduced in {time() - start} seconds")

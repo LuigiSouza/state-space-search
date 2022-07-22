@@ -15,21 +15,34 @@ def main():
         [1, 1, 1, 1, 1, 1, 1, 1],
     ]
     ssg = Grid.TSG()
-    ssg.read_file("maps/Berlin_0_1024.map")
+    ssg.create_from_file("maps/Denver_2_1024.map")
 
     plot_grid = [
         [[y * 255, y * 255, y * 255] if type(y) == int else [255, 0, 0] for y in x]
         for x in ssg.grid
     ]
-    result, weight, close = ssg.a_grid_search((2, 0), (1020, 1020))
+    start_time = time()
+    result, weight, close = ssg.a_grid_graph_search((2, 0), (1020, 1020))
     print("Weight: ", weight)
     plt.imshow(plot_grid)
-    x = [int(i.split(",")[0]) for i in close]
-    y = [int(i.split(",")[1]) for i in close]
+    x = [i[0] for i in close]
+    y = [i[1] for i in close]
     plt.plot(x, y, "ro", lw=0.5)
     x = [x for x, _ in result]
     y = [y for _, y in result]
     plt.plot(x, y, "go", lw=0.5)
+    print(f"A* with Visibility Graph finished in {time() - start_time} seconds")
+
+    # edges = set()
+    # for x in ssg.vertices:
+    #     vert = ssg.vertices[x]
+    #     for edge in vert.edges:
+    #         destiny = vert.edges[edge].destiny
+    #         if (destiny.x, destiny.y, vert.x, vert.y) in edges:
+    #             continue
+    #         edges.add((vert.x, vert.y, destiny.x, destiny.y))
+    #         plt.plot([vert.x, destiny.x], [vert.y, destiny.y], "b-", lw=0.5)
+
     plt.show()
 
     return
