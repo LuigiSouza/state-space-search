@@ -103,7 +103,7 @@ class Grid:
         weight = curr.weight
         path: list[Vertex] = []
         while curr != None:
-            path.append(curr.vertex)
+            path.append((curr.x, curr.y))
             curr = curr.father
         path.reverse()
         return (
