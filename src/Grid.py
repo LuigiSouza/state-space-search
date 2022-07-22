@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from matplotlib import pyplot as plt
 from .Vertex import Vertex
 
 from time import time
@@ -6,6 +8,17 @@ import numpy as np
 import cv2 as cv
 
 SQRT_2 = 1.4
+
+movements: tuple[int, int] = [
+    (1, -1),
+    (1, 0),
+    (1, 1),
+    (0, 1),
+    (-1, 1),
+    (-1, 0),
+    (-1, -1),
+    (0, -1),
+]
 
 
 class Grid:
@@ -66,16 +79,6 @@ class Grid:
                     ],
                 )
             closed_nodes.add(key)
-            movements: list[tuple[int, int]] = [
-                (1, -1),
-                (1, 0),
-                (1, 1),
-                (0, 1),
-                (-1, 1),
-                (-1, 0),
-                (-1, -1),
-                (0, -1),
-            ]
             for move in movements:
                 m_x = move[0] + curr.x
                 m_y = move[1] + curr.y
@@ -181,6 +184,21 @@ class SSG(Grid):
 
         path, w = self.a_graph_search((start.x, start.y), (end.x, end.y))
 
+        if start_is_vertex:
+            edge_keys = [str(e) for e in start.edges]
+            for e in edge_keys:
+                edge = start.edges[e]
+                start.del_edge(edge.destiny.x, edge.destiny.y)
+            self.grid[origin[1]][origin[0]] = 1
+            self.vertices.pop(s_key)
+        if end_is_vertex:
+            edge_keys = [str(e) for e in end.edges]
+            for e in edge_keys:
+                edge = end.edges[e]
+                end.del_edge(edge.destiny.x, edge.destiny.y)
+            self.grid[destiny[1]][destiny[0]] = 1
+            self.vertices.pop(e_key)
+
         if not len(path):
             return [], -1, []
 
@@ -196,27 +214,10 @@ class SSG(Grid):
             closed_nodes.extend(c)
             vertex = next
 
-        if start_is_vertex:
-            edge_keys = [str(e) for e in start.edges]
-            for e in edge_keys:
-                edge = start.edges[e]
-                start.del_edge(edge.destiny.x, edge.destiny.y)
-            self.grid[origin[1]][origin[0]] = 1
-            self.vertices.pop(s_key)
-        if end_is_vertex:
-            edge_keys = [str(e) for e in start.edges]
-            for e in edge_keys:
-                edge = start.edges[e]
-                start.del_edge(edge.destiny.x, edge.destiny.y)
-            self.grid[destiny[1]][destiny[0]] = 1
-            self.vertices.pop(e_key)
-
         return grid_path, grid_weight, closed_nodes
 
     def create_verices(self) -> None:
-
         start = time()
-
         plot_grid = np.float32(
             [[[y * 255, y * 255, y * 255] for y in x] for x in self.grid]
         )
@@ -235,33 +236,37 @@ class SSG(Grid):
             gray, np.float32(centroids), (5, 5), (-1, -1), criteria
         )
         # Now draw them
-        res = np.hstack((centroids, corners))
-        res: np.ndarray = np.int0(res)
-        y_s: np.ndarray = np.concatenate([res[:, 1], res[:, 3]])
-        x_s: np.ndarray = np.concatenate([res[:, 0], res[:, 2]])
+        corners: np.ndarray = np.int0(corners)
 
-        for x, y in zip(x_s, y_s):
-            if self.grid[y][x] != 0:
-                key = str(x) + "," + str(y)
-                vertex = Vertex(x, y, self.grid)
-                self.grid[y][x] = vertex
-                self.vertices[key] = vertex
+        for c in corners:
+            x = int(c[0])
+            y = int(c[1])
+            if self._is_out_of_bounds(x, y) or self.grid[y][x] == 0:
+                bfs = [(x, y)]
+                find = False
+                while not find and bfs:
+                    node = bfs.pop(0)
+                    for m in movements:
+                        curr = (m[0] + node[0], m[1] + node[1])
+                        if self._is_out_of_bounds(curr[0], curr[1]):
+                            continue
+                        if self.grid[curr[1]][curr[0]] == 0:
+                            bfs.append((curr[0], curr[1]))
+                        else:
+                            x = curr[0]
+                            y = curr[1]
+                            find = True
+                            break
+            key = str(x) + "," + str(y)
+            vertex = Vertex(x, y, self.grid)
+            self.grid[y][x] = vertex
+            self.vertices[key] = vertex
 
         print(f"{len(self.vertices)} vertices created in {time() - start} seconds")
 
     def reduce_vertices(self) -> None:
         start = time()
         to_delete: list[str] = []
-        movements: tuple[int, int] = [
-            (1, -1),
-            (1, 0),
-            (1, 1),
-            (0, 1),
-            (-1, 1),
-            (-1, 0),
-            (-1, -1),
-            (0, -1),
-        ]
         for goal_key in self.vertices:
             if goal_key in to_delete:
                 continue
