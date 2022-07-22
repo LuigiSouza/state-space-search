@@ -88,6 +88,9 @@ class Vertex:
                     queue.append((curr_distance + vertice.edges[edge].weight, next))
         return False
 
+    def is_out_of_bounds(x: int, y: int, grid: list[list]) -> bool:
+        return x < 0 or y < 0 or y >= len(grid) or x >= len(grid[y])
+
     def has_diagonal(
         origin: tuple[int, int],
         dir_x: int,
@@ -98,15 +101,8 @@ class Vertex:
         y = origin[1]
         target = (x + dir_x, y + dir_y)
 
-        if (
-            x < 0
-            or y < 0
-            or y >= len(grid)
-            or x >= len(grid[y])
-            or target[0] < 0
-            or target[1] < 0
-            or target[1] >= len(grid)
-            or target[0] >= len(grid[target[1]])
+        if Vertex.is_out_of_bounds(x, y, grid) or Vertex.is_out_of_bounds(
+            target[0], target[1], grid
         ):
             return False
         if (

@@ -1,6 +1,9 @@
 from __future__ import annotations
-from time import time
 from .Vertex import Vertex
+
+from time import time
+import numpy as np
+import cv2 as cv
 
 SQRT_2 = 1.4
 
@@ -11,6 +14,9 @@ class Grid:
 
     def __str__(self) -> str:
         return str(self.grid)
+
+    def _is_out_of_bounds(self, x: int, y: int) -> bool:
+        return x < 0 or y < 0 or y >= len(self.grid) or x >= len(self.grid[y])
 
     def a_grid_search(
         self, origin: tuple[int, int], destiny: tuple[int, int]
@@ -78,10 +84,7 @@ class Grid:
                 next_weight = curr.weight + int(10 * ((SQRT_2 * is_diagonal) or 1))
                 if (
                     next_key in closed_nodes
-                    or m_x < 0
-                    or m_y < 0
-                    or m_y >= len(self.grid)
-                    or m_x >= len(self.grid[m_y])
+                    or self._is_out_of_bounds(m_x, m_y)
                     or self.grid[m_y][m_x] == 0
                     or (is_diagonal and not curr.has_diagonal(*move, self.grid))
                 ):
@@ -107,7 +110,9 @@ class Grid:
             self.grid = [[]] * h_size
             for index, row in enumerate(f.readlines()):
                 self.grid[index] = [1 if x == "." else 0 for x in row.strip()]
-        print(f"File readed in {time() - start} seconds")
+        print(
+            f"{len(self.grid[0])}x{len(self.grid)} grid readed in {time() - start} seconds"
+        )
 
     def h_distance(origin: tuple[int, int], destiny: tuple[int, int]) -> int:
         dist_x = abs(origin[0] - destiny[0])
@@ -147,7 +152,9 @@ class SSG(Grid):
     ) -> tuple[list[tuple[int, int]], int, list[tuple[int, int]]]:
         print("-- A* Grid Graph Search --")
         if (
-            self.grid[origin[1]][origin[0]] == 0
+            self._is_out_of_bounds(origin[0], origin[1])
+            or self._is_out_of_bounds(destiny[0], destiny[1])
+            or self.grid[origin[1]][origin[0]] == 0
             or self.grid[destiny[1]][destiny[0]] == 0
         ):
             return [], -1, []
@@ -207,48 +214,40 @@ class SSG(Grid):
         return grid_path, grid_weight, closed_nodes
 
     def create_verices(self) -> None:
-        def is_corner(cell: tuple[int, int], dir_x: int, dir_y: int, grid: list[list]):
-            x = cell[0]
-            y = cell[1]
-            pos = (x + dir_x, y + dir_y)
-            if (
-                x < 0
-                or y < 0
-                or y >= len(grid)
-                or x >= len(grid[y])
-                or pos[0] < 0
-                or pos[1] < 0
-                or pos[1] >= len(grid)
-                or pos[0] >= len(grid[pos[1]])
-            ):
-                return False
-            return grid[pos[1]][pos[0]] == 0 and grid[y][pos[0]] == 1 == grid[pos[1]][x]
 
         start = time()
-        self.vertices: dict[str, Vertex] = {}
-        for y, row in enumerate(self.grid):
-            for x, value in enumerate(row):
-                if value == 0:
-                    continue
+
+        plot_grid = np.float32(
+            [[[y * 255, y * 255, y * 255] for y in x] for x in self.grid]
+        )
+        gray = cv.cvtColor(plot_grid, cv.COLOR_BGR2GRAY)
+        # find Harris corners
+        gray = np.float32(gray)
+        dst = cv.cornerHarris(gray, 2, 3, 0.04)
+        dst = cv.dilate(dst, None)
+        _, dst = cv.threshold(dst, 0.01 * dst.max(), 255, 0)
+        dst = np.uint8(dst)
+        # find centroids
+        _, _, _, centroids = cv.connectedComponentsWithStats(dst)
+        # define the criteria to stop and refine the corners
+        criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+        corners = cv.cornerSubPix(
+            gray, np.float32(centroids), (5, 5), (-1, -1), criteria
+        )
+        # Now draw them
+        res = np.hstack((centroids, corners))
+        res: np.ndarray = np.int0(res)
+        y_s: np.ndarray = np.concatenate([res[:, 1], res[:, 3]])
+        x_s: np.ndarray = np.concatenate([res[:, 0], res[:, 2]])
+
+        for x, y in zip(x_s, y_s):
+            if self.grid[y][x] != 0:
                 key = str(x) + "," + str(y)
-                cell = (x, y)
-                corners: list[tuple[int, int]] = [
-                    (-1, -1),  # Superior Esquerda
-                    (1, -1),  # Superior Direita
-                    (1, 1),  # Inferior Direita
-                    (-1, 1),  # Inferior Esquerda
-                ]
-                for corner in corners:
-                    d_x = corner[0]
-                    d_y = corner[1]
-                    if is_corner(cell, d_x, d_y, self.grid):
-                        vertex = Vertex(x, y, self.grid)
-                        self.vertices[key] = vertex
-                        self.grid[y][x] = vertex
-                        break
-                else:
-                    self.grid[y][x] = 1
-        print(f"Vertices created in {time() - start} seconds")
+                vertex = Vertex(x, y, self.grid)
+                self.grid[y][x] = vertex
+                self.vertices[key] = vertex
+
+        print(f"{len(self.vertices)} vertices created in {time() - start} seconds")
 
     def reduce_vertices(self) -> None:
         start = time()
@@ -281,7 +280,11 @@ class SSG(Grid):
         print(f"{len(to_delete)} vertices reduced in {time() - start} seconds")
 
     def a_graph_search(
-        self, origin: tuple[int, int], destiny: tuple[int, int], skip: list[str] = []
+        self,
+        origin: tuple[int, int],
+        destiny: tuple[int, int],
+        skip: list[str] = [],
+        limit: int = -1,
     ) -> tuple[list[Vertex], int]:
         class Cell:
             def __init__(self, vertex: Vertex, weight: int, father: "Cell") -> None:
@@ -305,6 +308,8 @@ class SSG(Grid):
             lowest = min(opened_nodes.values())
             key = str(lowest.vertex.x) + "," + str(lowest.vertex.y)
             curr = opened_nodes.pop(key)
+            if limit >= 0 and curr.heuristic:
+                return [], -1
             if curr.is_destiny(destiny):
                 weight = curr.weight
                 path: list[Vertex] = []
@@ -355,15 +360,11 @@ class TSG(SSG):
     def convert_to_tsg(self) -> None:
         start = time()
         global_goals: dict[str, Vertex] = dict(self.vertices)
-        # idx = 1
         for s in self.vertices:
             vert = self.vertices[s]
             new_edges: dict[str, tuple[Vertex, Vertex]] = {}
             is_local: bool = True
-            visited_edges: set[str] = set()
-            # if not idx % int((len(self.vertices) / 5)):
-            #     print(f"{idx}/{len(self.vertices)}")
-            # idx += 1
+            visited_edges: set[tuple[str, str]] = set()
             for p in vert.edges:
                 for q in vert.edges:
                     if p == q or (q, p) in visited_edges:
@@ -373,10 +374,11 @@ class TSG(SSG):
                     skip.append(s)
                     origin = vert.edges[p].destiny
                     destiny = vert.edges[q].destiny
+                    limit = vert.edges[p].weight + vert.edges[q].weight
                     _, d = self.a_graph_search(
-                        (origin.x, origin.y), (destiny.x, destiny.y), skip
+                        (origin.x, origin.y), (destiny.x, destiny.y), skip, limit
                     )
-                    if d == -1 or d > vert.edges[p].weight + vert.edges[q].weight:
+                    if d == -1 or d > limit:
                         if self.h_reachable(origin, (destiny.x, destiny.y)):
                             check_key = q + "," + p
                             if check_key not in new_edges:
@@ -394,4 +396,4 @@ class TSG(SSG):
         self.vertices = dict(
             [(x, global_goals[x]) for x in global_goals if x not in self.local_goals]
         )
-        print(f"Vertices reduced in {time() - start} seconds")
+        print(f"TSG converted in {time() - start} seconds")
