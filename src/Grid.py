@@ -483,7 +483,9 @@ class TSG(SSG):
         self.vertices = dict(
             [(x, global_goals[x]) for x in global_goals if x not in self.local_goals]
         )
-        print(f"TSG converted in {time() - start} seconds")
+        print(
+            f"TSG converted in {time() - start} seconds, {len(self.local_goals)} local goals detected"
+        )
 
     def a_grid_graph_search(
         self, origin: Point, destiny: Point

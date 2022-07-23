@@ -1,5 +1,6 @@
 from __future__ import annotations
 import random
+from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 from time import time
 
@@ -61,39 +62,68 @@ def plot_result(
     plt.show()
 
 
+def plot_side_by_side(
+    grid: Map,
+    origin: Point,
+    destiny: Point,
+    results: list[tuple[list[Point], list[Point], list[Point]], str],
+) -> None:
+    _, axs = plt.subplots(1, len(results))
+    for idx, res in enumerate(results):
+        sub: Axes = axs[idx]
+        result, closed, opened, title = res
+        plot_grid = [
+            [[y * 255] * 3 if type(y) == int else [255, 0, 0] for y in x] for x in grid
+        ]
+        for i in opened:
+            plot_grid[i[1]][i[0]] = [122, 122, 0]
+        for i in closed:
+            plot_grid[i[1]][i[0]] = [255, 0, 0]
+        for i in result:
+            plot_grid[i[1]][i[0]] = [0, 255, 0]
+        sub.set_title(title)
+        sub.imshow(plot_grid)
+        x = [x for x, _ in result]
+        y = [y for _, y in result]
+        sub.plot(x, y, "g-", lw=2)
+        sub.plot(origin[0], origin[1], "bo")
+        sub.plot(destiny[0], destiny[1], "go" if result else "ro")
+    plt.show()
+
+
 def benchmark(
     points: list[Point], grid: Grid.Grid, tests_per_point: int = 2, plot: bool = True
 ) -> None:
     visited_points: set[tuple[Point, Point]] = set()
     n: int = len(points) - 1
     limit = n * (n + 1) // 2
-    for p in points:
+    for origin in points:
         tests = 0
         while tests < tests_per_point and len(visited_points) < limit:
             destiny: Point = None
             while not destiny:
                 next = random.choice(points)
                 if (
-                    next != p
-                    and (next, p) not in visited_points
-                    and (p, next) not in visited_points
+                    next != origin
+                    and (next, origin) not in visited_points
+                    and (origin, next) not in visited_points
                 ):
                     destiny = next
             start_time = time()
-            print(f"\nOrigin: {p} - Destination: {destiny}")
-            result, weight, close, open = grid.a_grid_graph_search(p, destiny)
+            print(f"\nOrigin: {origin} - Destination: {destiny}")
+            result, weight, close, open = grid.a_grid_graph_search(origin, destiny)
             print(f"A* with Visibility Graph finished in {time() - start_time} seconds")
             print("Weight: ", weight)
-            if plot:
-                plot_result(grid.grid, result, close, open)
+            results = [(result, close, open, "A* with Visibility Graph")]
             start_time = time()
             print("-- A* without Visibility Graph --")
-            result, weight, close, open = grid.a_grid_search(p, destiny)
+            result, weight, close, open = grid.a_grid_search(origin, destiny)
             print(f"A* finished in {time() - start_time} seconds")
+            results.append((result, close, open, "A* in Raw Grid"))
             print("Weight: ", weight)
             if plot:
-                plot_result(grid.grid, result, close, open)
-            visited_points.add((p, destiny))
+                plot_side_by_side(grid.grid, origin, destiny, results)
+            visited_points.add((origin, destiny))
             tests += 1
 
 
