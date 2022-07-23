@@ -67,6 +67,7 @@ def plot_side_by_side(
     origin: Point,
     destiny: Point,
     results: list[tuple[list[Point], list[Point], list[Point]], str],
+    file_name: str = "result.png",
 ) -> None:
     _, axs = plt.subplots(1, len(results))
     for idx, res in enumerate(results):
@@ -88,17 +89,23 @@ def plot_side_by_side(
         sub.plot(x, y, "g-", lw=2)
         sub.plot(origin[0], origin[1], "bo")
         sub.plot(destiny[0], destiny[1], "go" if result else "ro")
-    plt.show()
+    plt.savefig("figs/" + file_name)
 
 
 def benchmark(
-    points: list[Point], grid: Grid.Grid, tests_per_point: int = 2, plot: bool = True
+    points: list[Point],
+    grid: Grid.Grid,
+    tests_per_point: int = 2,
+    plot: bool = False,
+    file_name: str = "results.tx",
 ) -> None:
     visited_points: set[tuple[Point, Point]] = set()
     n: int = len(points) - 1
     limit = n * (n + 1) // 2
-    for origin in points:
+    result_str: str = ""
+    for idx, origin in enumerate(points):
         tests = 0
+        print(f"Progress: {idx}/{n}")
         while tests < tests_per_point and len(visited_points) < limit:
             destiny: Point = None
             while not destiny:
@@ -109,22 +116,34 @@ def benchmark(
                     and (origin, next) not in visited_points
                 ):
                     destiny = next
+            result_str += f"{origin} {destiny}: "
+
             start_time = time()
             print(f"\nOrigin: {origin} - Destination: {destiny}")
             result, weight, close, open = grid.a_grid_graph_search(origin, destiny)
-            print(f"A* with Visibility Graph finished in {time() - start_time} seconds")
+            end_time = time() - start_time
+            print(f"A* with Visibility Graph finished in {end_time} seconds")
             print("Weight: ", weight)
             results = [(result, close, open, "A* with Visibility Graph")]
+            result_str += f"{weight},{len(close)},{end_time},"
+
             start_time = time()
             print("-- A* without Visibility Graph --")
             result, weight, close, open = grid.a_grid_search(origin, destiny)
-            print(f"A* finished in {time() - start_time} seconds")
-            results.append((result, close, open, "A* in Raw Grid"))
+            end_time = time() - start_time
+            print(f"A* finished in {end_time} seconds")
             print("Weight: ", weight)
+            results.append((result, close, open, "A* in Raw Grid"))
+            result_str += f"{weight},{len(close)},{end_time}\n"
+
             if plot:
-                plot_side_by_side(grid.grid, origin, destiny, results)
+                plot_side_by_side(
+                    grid.grid, origin, destiny, results, f"{origin},{destiny}.png"
+                )
             visited_points.add((origin, destiny))
             tests += 1
+    with open(file_name, "w") as f:
+        f.write(result_str)
 
 
 def main():
@@ -140,7 +159,7 @@ def main():
     tsg = Grid.TSG(grid)
     tsg.create_from_file("maps/Berlin_0_1024.map")
     bench_points = read_bench_points()
-    benchmark(bench_points, tsg)
+    benchmark(bench_points, tsg, plot=True)
 
 
 if __name__ == "__main__":
