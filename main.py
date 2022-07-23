@@ -86,10 +86,10 @@ def plot_side_by_side(
         sub.imshow(plot_grid)
         x = [x for x, _ in result]
         y = [y for _, y in result]
-        sub.plot(x, y, "g-", lw=2)
+        sub.plot(x, y, "g-", lw=1.5)
         sub.plot(origin[0], origin[1], "bo")
         sub.plot(destiny[0], destiny[1], "go" if result else "ro")
-    plt.savefig("figs/" + file_name)
+    plt.savefig("figs/" + file_name, dpi=300)
 
 
 def benchmark(
@@ -97,53 +97,54 @@ def benchmark(
     grid: Grid.Grid,
     tests_per_point: int = 2,
     plot: bool = False,
-    file_name: str = "results.tx",
+    file_name: str = "results.txt",
 ) -> None:
     visited_points: set[tuple[Point, Point]] = set()
     n: int = len(points) - 1
     limit = n * (n + 1) // 2
-    result_str: str = ""
-    for idx, origin in enumerate(points):
-        tests = 0
-        print(f"Progress: {idx}/{n}")
-        while tests < tests_per_point and len(visited_points) < limit:
-            destiny: Point = None
-            while not destiny:
-                next = random.choice(points)
-                if (
-                    next != origin
-                    and (next, origin) not in visited_points
-                    and (origin, next) not in visited_points
-                ):
-                    destiny = next
-            result_str += f"{origin} {destiny}: "
-
-            start_time = time()
-            print(f"\nOrigin: {origin} - Destination: {destiny}")
-            result, weight, close, open = grid.a_grid_graph_search(origin, destiny)
-            end_time = time() - start_time
-            print(f"A* with Visibility Graph finished in {end_time} seconds")
-            print("Weight: ", weight)
-            results = [(result, close, open, "A* with Visibility Graph")]
-            result_str += f"{weight},{len(close)},{end_time},"
-
-            start_time = time()
-            print("-- A* without Visibility Graph --")
-            result, weight, close, open = grid.a_grid_search(origin, destiny)
-            end_time = time() - start_time
-            print(f"A* finished in {end_time} seconds")
-            print("Weight: ", weight)
-            results.append((result, close, open, "A* in Raw Grid"))
-            result_str += f"{weight},{len(close)},{end_time}\n"
-
-            if plot:
-                plot_side_by_side(
-                    grid.grid, origin, destiny, results, f"{origin},{destiny}.png"
-                )
-            visited_points.add((origin, destiny))
-            tests += 1
     with open(file_name, "w") as f:
-        f.write(result_str)
+        for idx, origin in enumerate(points):
+            tests: int = 0
+            print(f"\nProgress: {idx+1}/{n}")
+            while tests < tests_per_point and len(visited_points) < limit:
+                destiny: Point = None
+                while not destiny:
+                    next = random.choice(points)
+                    if (
+                        next != origin
+                        and (next, origin) not in visited_points
+                        and (origin, next) not in visited_points
+                    ):
+                        destiny = next
+                result_str = f"{origin} {destiny} "
+
+                start_time = time()
+                print(f"Origin: {origin} - Destination: {destiny}")
+                result, weight, closed, opened = grid.a_grid_graph_search(
+                    origin, destiny
+                )
+                end_time = time() - start_time
+                print(f"A* with Visibility Graph finished in {end_time} seconds")
+                print("Weight: ", weight)
+                results = [(result, closed, opened, "A* with Visibility Graph")]
+                result_str += f"{weight},{len(closed)},{end_time},"
+
+                start_time = time()
+                print("-- A* without Visibility Graph --")
+                result, weight, closed, opened = grid.a_grid_search(origin, destiny)
+                end_time = time() - start_time
+                print(f"A* finished in {end_time} seconds")
+                print("Weight: ", weight)
+                results.append((result, closed, opened, "A* in Raw Grid"))
+                result_str += f"{weight},{len(closed)},{end_time}\n"
+
+                if plot:
+                    plot_side_by_side(
+                        grid.grid, origin, destiny, results, f"{origin},{destiny}.png"
+                    )
+                visited_points.add((origin, destiny))
+                tests += 1
+                f.write(result_str)
 
 
 def main():
