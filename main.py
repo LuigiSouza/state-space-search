@@ -1,38 +1,80 @@
 from __future__ import annotations
-from random import random
+import random
 import matplotlib.pyplot as plt
 from time import time
 
 import src.Grid as Grid
 
+Point = Grid.Point
+
 
 def generate_bench_points(
     n: int, grid: list[list], file_name: str = "points.txt"
-) -> list[tuple[int, int]]:
-    bench_mark: list[tuple[int, int]] = []
+) -> list[Point]:
+    bench_points: list[Point] = []
     max_tries = n * n
     with open(file_name, "w") as f:
-        while max_tries and len(bench_mark) < n:
+        while max_tries and len(bench_points) < n:
             max_tries -= 1
-            x = int(len(grid[0]) * random())
-            y = int(len(grid) * random())
-            if (x, y) in bench_mark:
+            x = int(len(grid[0]) * random.random())
+            y = int(len(grid) * random.random())
+            if (x, y) in bench_points:
                 continue
             if grid[y][x] != 0:
-                bench_mark.append((x, y))
+                bench_points.append((x, y))
                 f.write(f"{x} {y}\n")
-    return bench_mark
+    return bench_points
 
 
-def read_bench_points(file_name: str = "points.txt") -> list[tuple[int, int]]:
-    bench_mark: list[tuple[int, int]] = []
+def read_bench_points(file_name: str = "points.txt") -> list[Point]:
+    bench_points: list[Point] = []
     with open(file_name, "r") as f:
         for line in f.readlines():
             line = line.split()
             x = int(line[0])
             y = int(line[1])
-            bench_mark.append((x, y))
-    return bench_mark
+            bench_points.append((x, y))
+    return bench_points
+
+
+def benchmark(
+    points: list[Point], grid: Grid.Grid, tests_per_point: int = 2, plot: bool = True
+):
+    visited_points: set[tuple[Point, Point]] = set()
+
+    for p in points:
+        tests = 0
+        while tests < tests_per_point:
+            destiny: Point = None
+            while not destiny:
+                next = random.choice(points)
+                if next != p and (next, p) not in visited_points:
+                    destiny = next
+            start_time = time()
+            result, weight, close, open = grid.a_grid_graph_search(p, destiny)
+            print(f"Origin: {p} - Destination: {destiny}")
+            print(f"A* with Visibility Graph finished in {time() - start_time} seconds")
+            print("Weight: ", weight)
+            tests += 1
+
+            if plot:
+                plot_grid = [
+                    [[y * 255] * 3 if type(y) == int else [255, 255, 255] for y in x]
+                    for x in grid.grid
+                ]
+                for i in open:
+                    if i not in result:
+                        plot_grid[i[1]][i[0]] = [122, 122, 0]
+                for i in close:
+                    if i not in result:
+                        plot_grid[i[1]][i[0]] = [255, 0, 0]
+                plt.imshow(plot_grid)
+                x = [x for x, _ in result]
+                y = [y for _, y in result]
+                plt.plot(x, y, "g-", lw=2)
+                plt.plot(p[0], p[1], "bo")
+                plt.plot(destiny[0], destiny[1], "go")
+                plt.show()
 
 
 def main():
@@ -47,33 +89,10 @@ def main():
 
     tsg = Grid.TSG(grid)
     # tsg.create_graph()
-    tsg.read_file("maps/Berlin_0_1024.map")
+    tsg.create_from_file("maps/Berlin_0_1024.map")
 
-    plot_grid = [
-        [[y * 255, y * 255, y * 255] if type(y) == int else [255, 0, 0] for y in x]
-        for x in tsg.grid
-    ]
-
-    bench_mark = read_bench_points()
-
-    start_time = time()
-    result, weight, close = tsg.a_grid_graph_search((10, 10), (1020, 1020))
-    print(f"A* with Visibility Graph finished in {time() - start_time} seconds")
-    print("Weight: ", weight)
-
-    plt.imshow(plot_grid)
-
-    x = [i[0] for i in close if i not in result]
-    y = [i[1] for i in close if i not in result]
-    plt.plot(x, y, "ro", lw=0.5)
-    x = [x for x, _ in result]
-    y = [y for _, y in result]
-    plt.plot(x, y, "g-", lw=1)
-    x = [x for x, _ in bench_mark]
-    y = [y for _, y in bench_mark]
-    plt.plot(x, y, "bo")
-
-    plt.show()
+    bench_points = read_bench_points()
+    benchmark(bench_points, tsg)
 
 
 if __name__ == "__main__":
