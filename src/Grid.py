@@ -11,6 +11,8 @@ import cv2 as cv
 SQRT_2 = 1.4
 MIN_SIZE = 15
 
+Point = tuple[int, int]
+
 movements: tuple[int, int] = [
     (1, -1),
     (1, 0),
@@ -33,9 +35,23 @@ class Grid:
     def _is_out_of_bounds(self, x: int, y: int) -> bool:
         return x < 0 or y < 0 or y >= len(self.grid) or x >= len(self.grid[y])
 
+    def a_grid_graph_search(
+        self, origin: Point, destiny: Point
+    ) -> tuple[list[Point], int, list[Point]]:
+        return [], -1, []
+
+    def a_graph_search(
+        self,
+        origin: Point,
+        destiny: Point,
+        skip: set[str] = [],
+        limit: int = -1,
+    ) -> tuple[list[Vertex], int]:
+        return [], -1
+
     def a_grid_search(
-        self, origin: tuple[int, int], destiny: tuple[int, int]
-    ) -> tuple[list[tuple[int, int]], int, list[tuple[int, int]]]:
+        self, origin: Point, destiny: Point
+    ) -> tuple[list[Point], int, list[Point], list[Point]]:
         class Cell:
             def __init__(self, x: int, y: int, weight: int, father: "Cell") -> None:
                 self.x = x
@@ -52,7 +68,7 @@ class Grid:
             ) -> bool:
                 return Vertex.has_diagonal((self.x, self.y), dir_x, dir_y, grid)
 
-            def is_destiny(self, target: tuple[int, int]) -> bool:
+            def is_destiny(self, target: Point) -> bool:
                 return self.x == target[0] and self.y == target[1]
 
             def __lt__(self, other: "Cell") -> bool:
@@ -67,7 +83,7 @@ class Grid:
             curr = opened_nodes.pop(key)
             if curr.is_destiny(destiny):
                 weight = curr.weight
-                path: list[tuple[int, int]] = []
+                path: list[Point] = []
                 while curr != None:
                     path.append((curr.x, curr.y))
                     curr = curr.father
@@ -76,6 +92,7 @@ class Grid:
                     path,
                     weight,
                     [(closed_nodes[i].x, closed_nodes[i].y) for i in closed_nodes],
+                    [(opened_nodes[i].x, opened_nodes[i].y) for i in opened_nodes],
                 )
             closed_nodes[key] = curr
             for move in movements:
@@ -99,7 +116,7 @@ class Grid:
                 else:
                     opened_nodes[next_key] = Cell(m_x, m_y, next_weight, curr)
 
-        return [], -1, []
+        return [], -1, [], []
 
     def read_file(self, file_name: str) -> None:
         start = time()
@@ -116,7 +133,7 @@ class Grid:
             f"{len(self.grid[0])}x{len(self.grid)} grid readed in {time() - start} seconds"
         )
 
-    def h_distance(origin: tuple[int, int], destiny: tuple[int, int]) -> int:
+    def h_distance(origin: Point, destiny: Point) -> int:
         dist_x = abs(origin[0] - destiny[0])
         dist_y = abs(origin[1] - destiny[1])
         return int(10 * (abs(dist_x - dist_y) + min(dist_x, dist_y) * SQRT_2))
@@ -150,8 +167,8 @@ class SSG(Grid):
         self.create_graph()
 
     def a_grid_graph_search(
-        self, origin: tuple[int, int], destiny: tuple[int, int]
-    ) -> tuple[list[tuple[int, int]], int, list[tuple[int, int]]]:
+        self, origin: Point, destiny: Point
+    ) -> tuple[list[Point], int, list[Point]]:
         print("-- A* Grid Graph Search --")
         if (
             self._is_out_of_bounds(origin[0], origin[1])
@@ -203,8 +220,8 @@ class SSG(Grid):
 
         grid_weight = 0
         vertex = path.pop(0)
-        grid_path: list[tuple[int, int]] = []
-        closed_nodes: list[tuple[int, int]] = []
+        grid_path: list[Point] = []
+        closed_nodes: list[Point] = []
         while len(path):
             next = path.pop(0)
             p, w, c = self.a_grid_search((vertex.x, vertex.y), (next.x, next.y))
@@ -216,7 +233,7 @@ class SSG(Grid):
         return grid_path, grid_weight, closed_nodes
 
     def __create_simple_vertice(self):
-        def is_corner(cell: tuple[int, int], dir_x: int, dir_y: int, grid: list[list]):
+        def is_corner(cell: Point, dir_x: int, dir_y: int, grid: list[list]):
             x = cell[0]
             y = cell[1]
             pos = (x + dir_x, y + dir_y)
@@ -280,13 +297,13 @@ class SSG(Grid):
             y = int(c[1])
             if self._is_out_of_bounds(x, y) or self.grid[y][x] == 0:
                 bfs = [(x, y)]
-                closed: set[tuple[int, int]] = set()
+                closed: set[Point] = set()
                 while bfs:
                     node = bfs.pop(0)
                     if node in closed:
                         continue
                     closed.add(node)
-                    neighbors: list[tuple[int, int]] = []
+                    neighbors: list[Point] = []
                     for m in movements:
                         curr = (m[0] + node[0], m[1] + node[1])
                         if self._is_out_of_bounds(curr[0], curr[1]):
@@ -330,8 +347,8 @@ class SSG(Grid):
 
     def a_graph_search(
         self,
-        origin: tuple[int, int],
-        destiny: tuple[int, int],
+        origin: Point,
+        destiny: Point,
         skip: set[str] = [],
         limit: int = -1,
     ) -> tuple[list[Vertex], int]:
@@ -344,7 +361,7 @@ class SSG(Grid):
                     (vertex.x, vertex.y), destiny
                 )
 
-            def is_destiny(self, target: tuple[int, int]) -> bool:
+            def is_destiny(self, target: Point) -> bool:
                 return self.vertex.x == target[0] and self.vertex.y == target[1]
 
             def __lt__(self, other: "Cell") -> bool:
@@ -393,7 +410,7 @@ class SSG(Grid):
         path.reverse()
         return path, weight
 
-    def h_reachable(self, origin: "Vertex", destiny: tuple[int, int]) -> bool:
+    def h_reachable(self, origin: "Vertex", destiny: Point) -> bool:
         return (
             Grid.h_distance((origin.x, origin.y), destiny)
             == self.a_graph_search((origin.x, origin.y), destiny)[1]
@@ -462,8 +479,8 @@ class TSG(SSG):
         print(f"TSG converted in {time() - start} seconds")
 
     def a_grid_graph_search(
-        self, origin: tuple[int, int], destiny: tuple[int, int]
-    ) -> tuple[list[tuple[int, int]], int, list[tuple[int, int]]]:
+        self, origin: Point, destiny: Point
+    ) -> tuple[list[Point], int, list[Point], list[Point]]:
         print("-- A* Grid Graph Search --")
         if (
             self._is_out_of_bounds(origin[0], origin[1])
@@ -471,7 +488,7 @@ class TSG(SSG):
             or self.grid[origin[1]][origin[0]] == 0
             or self.grid[destiny[1]][destiny[0]] == 0
         ):
-            return [], -1, []
+            return [], -1, [], []
         start_is_vertex = False
         end_is_vertex = False
         if self.grid[origin[1]][origin[0]] == 1:
@@ -539,18 +556,20 @@ class TSG(SSG):
             self.vertices.pop(e_key)
 
         if not path:
-            return [], -1, []
+            return [], -1, [], []
 
         grid_weight = 0
         vertex = path.pop(0)
-        grid_path: list[tuple[int, int]] = []
-        closed_nodes: list[tuple[int, int]] = []
+        grid_path: list[Point] = []
+        closed_nodes: list[Point] = []
+        opened_nodes: list[Point] = []
         while len(path):
             next = path.pop(0)
-            p, w, c = self.a_grid_search((vertex.x, vertex.y), (next.x, next.y))
+            p, w, c, o = self.a_grid_search((vertex.x, vertex.y), (next.x, next.y))
             grid_weight += w
             grid_path.extend(p)
             closed_nodes.extend(c)
+            opened_nodes.extend(o)
             vertex = next
 
-        return grid_path, grid_weight, closed_nodes
+        return grid_path, grid_weight, closed_nodes, opened_nodes
