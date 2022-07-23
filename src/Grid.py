@@ -415,14 +415,7 @@ class SSG(Grid):
                 else:
                     opened_nodes[next_key] = Cell(next, next_weight, curr)
 
-        curr = min(closed_nodes.values())
-        weight = curr.weight
-        path: list[Vertex] = []
-        while curr != None:
-            path.append(curr.vertex)
-            curr = curr.father
-        path.reverse()
-        return path, weight
+        return [], -1
 
     def h_reachable(self, origin: "Vertex", destiny: Point) -> bool:
         return (
