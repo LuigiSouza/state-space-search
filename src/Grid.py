@@ -220,14 +220,14 @@ class SSG(Grid):
             self.grid[destiny[1]][destiny[0]] = 1
             self.vertices.pop(e_key)
 
-        if not len(path):
+        if not path:
             return [], -1, []
 
-        grid_weight = 0
+        grid_weight = 0 if path else -1
         vertex = path.pop(0)
         grid_path: list[Point] = []
         closed_nodes: list[Point] = []
-        while len(path):
+        while path:
             next = path.pop(0)
             p, w, c = self.a_grid_search((vertex.x, vertex.y), (next.x, next.y))
             grid_weight += w
@@ -568,7 +568,7 @@ class TSG(SSG):
         grid_path: list[Point] = []
         closed_nodes: list[Point] = []
         opened_nodes: list[Point] = []
-        while len(path):
+        while path:
             next = path.pop(0)
             p, w, c, o = self.a_grid_search((vertex.x, vertex.y), (next.x, next.y))
             grid_weight += w
