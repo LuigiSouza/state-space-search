@@ -99,18 +99,7 @@ class Grid:
                 else:
                     opened_nodes[next_key] = Cell(m_x, m_y, next_weight, curr)
 
-        curr = min(closed_nodes.values())
-        weight = curr.weight
-        path: list[Vertex] = []
-        while curr != None:
-            path.append((curr.x, curr.y))
-            curr = curr.father
-        path.reverse()
-        return (
-            path,
-            weight,
-            [(closed_nodes[i].x, closed_nodes[i].y) for i in closed_nodes],
-        )
+        return [], -1, []
 
     def read_file(self, file_name: str) -> None:
         start = time()
@@ -465,7 +454,8 @@ class TSG(SSG):
             goal = self.local_goals[l]
             for e in goal.edges:
                 edge = goal.edges[e]
-                edge.is_local = False
+                edge.is_local = True
+                edge.destiny.edges[goal.key].is_local = True
         self.vertices = dict(
             [(x, global_goals[x]) for x in global_goals if x not in self.local_goals]
         )
