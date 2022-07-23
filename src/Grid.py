@@ -35,6 +35,14 @@ class Grid:
     def _is_out_of_bounds(self, x: int, y: int) -> bool:
         return x < 0 or y < 0 or y >= len(self.grid) or x >= len(self.grid[y])
 
+    def plot_grid(self) -> None:
+        plot_grid = [
+            [[y * 255] * 3 if type(y) == int else [255, 0, 0] for y in x]
+            for x in self.grid
+        ]
+        plt.imshow(plot_grid)
+        plt.show()
+
     def a_grid_graph_search(
         self, origin: Point, destiny: Point
     ) -> tuple[list[Point], int, list[Point]]:
@@ -96,7 +104,7 @@ class Grid:
                 )
             closed_nodes[key] = curr
             to_x = curr.x - destiny[0]
-            to_y = curr.x - destiny[0]
+            to_y = curr.y - destiny[1]
             direct = abs(to_x) < abs(to_y)
             way = to_x > 0 if direct else to_y > 0
             sorted_movements = sorted(movements, key=lambda x: x[direct], reverse=way)
@@ -528,7 +536,8 @@ class TSG(SSG):
                 if d.key in self.local_goals:
                     self.vertices[d.key] = self.local_goals.pop(d.key)
 
-        path, w = self.a_graph_search((start.x, start.y), (end.x, end.y))
+        skip = set([x for x in self.local_goals])
+        path, w = self.a_graph_search((start.x, start.y), (end.x, end.y), skip=skip)
 
         for e in start.edges:
             edge_keys = [str(e) for e in start.edges]
