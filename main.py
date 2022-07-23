@@ -41,25 +41,30 @@ def benchmark(
     points: list[Point], grid: Grid.Grid, tests_per_point: int = 2, plot: bool = True
 ):
     visited_points: set[tuple[Point, Point]] = set()
-
+    n: int = len(points) - 1
+    limit = n * (n + 1) // 2
     for p in points:
         tests = 0
-        while tests < tests_per_point:
+        while tests < tests_per_point and len(visited_points) < limit:
             destiny: Point = None
             while not destiny:
                 next = random.choice(points)
-                if next != p and (next, p) not in visited_points:
+                if (
+                    next != p
+                    and (next, p) not in visited_points
+                    and (p, next) not in visited_points
+                ):
                     destiny = next
             start_time = time()
             result, weight, close, open = grid.a_grid_graph_search(p, destiny)
             print(f"Origin: {p} - Destination: {destiny}")
             print(f"A* with Visibility Graph finished in {time() - start_time} seconds")
             print("Weight: ", weight)
+            visited_points.add((p, destiny))
             tests += 1
-
             if plot:
                 plot_grid = [
-                    [[y * 255] * 3 if type(y) == int else [255, 255, 255] for y in x]
+                    [[y * 255] * 3 if type(y) == int else [255, 0, 0] for y in x]
                     for x in grid.grid
                 ]
                 for i in open:
