@@ -95,7 +95,12 @@ class Grid:
                     [(opened_nodes[i].x, opened_nodes[i].y) for i in opened_nodes],
                 )
             closed_nodes[key] = curr
-            for move in movements:
+            to_x = curr.x - destiny[0]
+            to_y = curr.x - destiny[0]
+            direct = abs(to_x) < abs(to_y)
+            way = to_x > 0 if direct else to_y > 0
+            sorted_movements = sorted(movements, key=lambda x: x[direct], reverse=way)
+            for move in sorted_movements:
                 m_x = move[0] + curr.x
                 m_y = move[1] + curr.y
                 next_key = str(m_x) + "," + str(m_y)
