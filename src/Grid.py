@@ -12,6 +12,7 @@ SQRT_2 = 1.4
 MIN_SIZE = 15
 
 Point = tuple[int, int]
+Map = list[list]
 
 movements: tuple[int, int] = [
     (1, -1),
@@ -26,7 +27,7 @@ movements: tuple[int, int] = [
 
 
 class Grid:
-    def __init__(self, grid: list[list] = [[]]) -> None:
+    def __init__(self, grid: Map = [[]]) -> None:
         self.grid = grid
 
     def __str__(self) -> str:
@@ -105,7 +106,7 @@ class Grid:
             closed_nodes[key] = curr
             to_x = curr.x - destiny[0]
             to_y = curr.y - destiny[1]
-            direct = abs(to_x) < abs(to_y)
+            direct = abs(to_x) > abs(to_y)
             way = to_x > 0 if direct else to_y > 0
             sorted_movements = sorted(movements, key=lambda x: x[direct], reverse=way)
             for move in sorted_movements:
@@ -153,7 +154,7 @@ class Grid:
 
 
 class SSG(Grid):
-    def __init__(self, grid: list[list] = [[]]) -> None:
+    def __init__(self, grid: Map = [[]]) -> None:
         super().__init__(grid)
         self.vertices: dict[str, Vertex] = {}
 
@@ -431,7 +432,7 @@ class SSG(Grid):
 
 
 class TSG(SSG):
-    def __init__(self, grid: list[list] = [[]]) -> None:
+    def __init__(self, grid: Map = [[]]) -> None:
         super().__init__(grid)
         self.local_goals: dict[str, Vertex] = {}
 

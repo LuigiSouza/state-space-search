@@ -2,6 +2,8 @@ from __future__ import annotations
 
 SQRT_2 = 1.4
 
+Point = tuple[int, int]
+
 
 class Edge:
     def __init__(
@@ -96,7 +98,7 @@ class Vertex:
         return x < 0 or y < 0 or y >= len(grid) or x >= len(grid[y])
 
     def has_diagonal(
-        origin: tuple[int, int],
+        origin: Point,
         dir_x: int,
         dir_y: int,
         grid: list[list],
@@ -119,7 +121,7 @@ class Vertex:
 
     def __clearence(
         self,
-        origin: tuple[int, int],
+        origin: Point,
         dir_x: int,
         dir_y: int,
         limit: int = -1,
