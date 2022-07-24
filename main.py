@@ -144,7 +144,7 @@ def benchmark(
                         and (origin, next) not in visited_points
                     ):
                         destiny = next
-                result_str = f"{origin} {destiny} "
+                result_str = f"{origin};{destiny};"
 
                 # A* search with Visibility Graph
                 start_time = time()
@@ -156,7 +156,7 @@ def benchmark(
                 print(f"A* with Visibility Graph finished in {end_time} seconds")
                 print("Weight: ", weight)
                 results = [(result, closed, opened, "A* with Visibility Graph")]
-                result_str += f"{weight},{len(closed)},{end_time},"
+                result_str += f"{weight};{len(closed)};{end_time};"
 
                 # A* search without Visibility Graph
                 start_time = time()
@@ -166,7 +166,7 @@ def benchmark(
                 print(f"A* finished in {end_time} seconds")
                 print("Weight: ", weight)
                 results.append((result, closed, opened, "A* in Raw Grid"))
-                result_str += f"{weight},{len(closed)},{end_time}\n"
+                result_str += f"{weight};{len(closed)};{end_time}\n"
 
                 if plot:
                     plot_side_by_side(
