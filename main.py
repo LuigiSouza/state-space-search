@@ -108,7 +108,7 @@ def plot_side_by_side(
         sub.plot(origin[0], origin[1], "bo")
         sub.plot(destiny[0], destiny[1], "go" if result else "ro")
     if file_name:
-        plt.savefig("figs2/" + file_name, dpi=300)
+        plt.savefig("figs/" + file_name, dpi=300)
     else:
         plt.show()
 

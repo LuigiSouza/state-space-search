@@ -13,7 +13,7 @@ SQRT_2 = 1.4
 # Minimal grid size to use the Corner's algorithm
 MIN_SIZE = 15
 # If true, the simple vertice detection method is used. If false, the Corner Harris one is used
-SIMPLE_VERTICE = True
+USE_OPENCV = True
 # Limit of vertices alowed to be around another one
 MAX_VERTICES_PER_VERTEX = 1
 
@@ -167,7 +167,12 @@ class Grid:
                 else:
                     opened_nodes[next_key] = Cell(m_x, m_y, next_weight, curr)
 
-        return [], -1, [], []
+        return (
+            [],
+            -1,
+            [(closed_nodes[i].x, closed_nodes[i].y) for i in closed_nodes],
+            [(opened_nodes[i].x, opened_nodes[i].y) for i in opened_nodes],
+        )
 
     def read_file(self, file_name: str) -> None:
         """
@@ -347,7 +352,7 @@ class SSG(Grid):
         """
         start = time()
 
-        if SIMPLE_VERTICE or len(self.grid) < MIN_SIZE or len(self.grid[0]) < MIN_SIZE:
+        if not USE_OPENCV or len(self.grid) < MIN_SIZE or len(self.grid[0]) < MIN_SIZE:
             self.__create_simple_vertice()
             print(f"{len(self.vertices)} vertices created in {time() - start} seconds")
             return
