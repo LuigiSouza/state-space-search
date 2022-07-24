@@ -8,12 +8,19 @@ from time import time
 import numpy as np
 import cv2 as cv
 
+# Square root of 2
 SQRT_2 = 1.4
+# Minimal grid size to use the Corner's algorithm
 MIN_SIZE = 15
+# If true, the simple vertice detection method is used. If false, the Corner Harris one is used
+SIMPLE_VERTICE = True
+# Limit of vertices alowed to be around another one
+MAX_VERTICES_PER_VERTEX = 1
 
 Point = tuple[int, int]
 Map = list[list]
 
+# List of movements allowed to be around a vertex
 movements: tuple[int, int] = [
     (1, -1),
     (1, 0),
@@ -34,9 +41,15 @@ class Grid:
         return str(self.grid)
 
     def _is_out_of_bounds(self, x: int, y: int) -> bool:
+        """
+        Funcion to check if given coordinates are outside the grid
+        """
         return x < 0 or y < 0 or y >= len(self.grid) or x >= len(self.grid[y])
 
     def plot_grid(self) -> None:
+        """
+        Plot the grid
+        """
         plot_grid = [
             [[y * 255] * 3 if type(y) == int else [255, 0, 0] for y in x]
             for x in self.grid
@@ -47,6 +60,9 @@ class Grid:
     def a_grid_graph_search(
         self, origin: Point, destiny: Point
     ) -> tuple[list[Point], int, list[Point]]:
+        """
+        Interface to A* search using visibility graph
+        """
         return [], -1, []
 
     def a_graph_search(
@@ -56,12 +72,23 @@ class Grid:
         skip: set[str] = [],
         limit: int = -1,
     ) -> tuple[list[Vertex], int]:
+        """
+        Interface to A* search into visibility graph
+        """
         return [], -1
 
     def a_grid_search(
         self, origin: Point, destiny: Point
     ) -> tuple[list[Point], int, list[Point], list[Point]]:
+        """
+        A* search algorithm given an origin and the destiny
+        """
+
         class Cell:
+            """
+            Auxiliar class to store opened and closed nodes and their weights
+            """
+
             def __init__(self, x: int, y: int, weight: int, father: "Cell") -> None:
                 self.x = x
                 self.y = y
@@ -75,6 +102,10 @@ class Grid:
                 dir_y: int,
                 grid: list[list],
             ) -> bool:
+                """
+                Function to check if the current cell has access to its diagonal given it
+                his direction
+                """
                 return Vertex.has_diagonal((self.x, self.y), dir_x, dir_y, grid)
 
             def is_destiny(self, target: Point) -> bool:
@@ -87,12 +118,14 @@ class Grid:
         opened_nodes: dict[str, Cell] = {key: Cell(origin[0], origin[1], 0, None)}
         closed_nodes: dict[str, Cell] = {}
         while opened_nodes:
+            # Get the node with the lowest heuristic
             lowest = min(opened_nodes.values())
             key = str(lowest.x) + "," + str(lowest.y)
             curr = opened_nodes.pop(key)
             if curr.is_destiny(destiny):
                 weight = curr.weight
                 path: list[Point] = []
+                # Get the reverse path from the destiny to the origin
                 while curr != None:
                     path.append((curr.x, curr.y))
                     curr = curr.father
@@ -103,11 +136,13 @@ class Grid:
                     [(closed_nodes[i].x, closed_nodes[i].y) for i in closed_nodes],
                     [(opened_nodes[i].x, opened_nodes[i].y) for i in opened_nodes],
                 )
+            # Closes the node
             closed_nodes[key] = curr
             to_x = curr.x - destiny[0]
             to_y = curr.y - destiny[1]
             direct = abs(to_x) > abs(to_y)
             way = to_x > 0 if direct else to_y > 0
+            # Prioritizes the movements towards the destiny
             sorted_movements = sorted(movements, key=lambda x: x[direct], reverse=way)
             for move in sorted_movements:
                 m_x = move[0] + curr.x
@@ -115,6 +150,7 @@ class Grid:
                 next_key = str(m_x) + "," + str(m_y)
                 is_diagonal = move[0] != 0 and move[1] != 0
                 next_weight = curr.weight + int(10 * ((SQRT_2 * is_diagonal) or 1))
+                # Check if the node is valid or has been already visited
                 if (
                     next_key in closed_nodes
                     or self._is_out_of_bounds(m_x, m_y)
@@ -123,6 +159,7 @@ class Grid:
                 ):
                     continue
                 distance = Grid.h_distance((m_x, m_y), destiny)
+                # Create the node or update the heuristic if it has been visited and has a lower one
                 if next_key in opened_nodes:
                     if next_weight + distance < opened_nodes[next_key].heuristic:
                         opened_nodes[next_key].heuristic = next_weight + distance
@@ -133,6 +170,9 @@ class Grid:
         return [], -1, [], []
 
     def read_file(self, file_name: str) -> None:
+        """
+        Create the grid from a .map file
+        """
         start = time()
         self.grid = [[]]
         with open(file_name, "r") as f:
@@ -148,17 +188,27 @@ class Grid:
         )
 
     def h_distance(origin: Point, destiny: Point) -> int:
+        """
+        Returns the octile distance between two coordinates pairs
+        """
         dist_x = abs(origin[0] - destiny[0])
         dist_y = abs(origin[1] - destiny[1])
         return int(10 * (abs(dist_x - dist_y) + min(dist_x, dist_y) * SQRT_2))
 
 
 class SSG(Grid):
+    """
+    Simple SubLevel Graph
+    """
+
     def __init__(self, grid: Map = [[]]) -> None:
         super().__init__(grid)
         self.vertices: dict[str, Vertex] = {}
 
     def create_graph(self) -> None:
+        """
+        All steps needed to create visibility graph
+        """
         self.create_verices()
         self.reduce_vertices()
         self.create_edges()
@@ -183,6 +233,9 @@ class SSG(Grid):
     def a_grid_graph_search(
         self, origin: Point, destiny: Point
     ) -> tuple[list[Point], int, list[Point]]:
+        """
+        A* search between two points using the visibility graph help
+        """
         print("-- A* Grid Graph Search --")
         if (
             self._is_out_of_bounds(origin[0], origin[1])
@@ -193,6 +246,7 @@ class SSG(Grid):
             return [], -1, []
         start_is_vertex = False
         end_is_vertex = False
+        # Creates the origin and destiny as vertices from the visibility graph
         if self.grid[origin[1]][origin[0]] == 1:
             vertex = Vertex(origin[0], origin[1], self.grid)
             s_key = str(origin[0]) + "," + str(origin[1])
@@ -212,8 +266,10 @@ class SSG(Grid):
         end.create_edges()
         end.reduce_edges()
 
+        # Find shortest vertices path
         path, w = self.a_graph_search((start.x, start.y), (end.x, end.y))
 
+        # If origin or destiny are not vertices, remove them from the grid
         if start_is_vertex:
             edge_keys = [str(e) for e in start.edges]
             for e in edge_keys:
@@ -232,6 +288,7 @@ class SSG(Grid):
         if not path:
             return [], -1, []
 
+        # Converts the vertices path into a grid path, using a simple A* search between each node
         grid_weight = 0 if path else -1
         vertex = path.pop(0)
         grid_path: list[Point] = []
@@ -247,6 +304,10 @@ class SSG(Grid):
         return grid_path, grid_weight, closed_nodes
 
     def __create_simple_vertice(self):
+        """
+        Funcion to iterate through and detect if a pixel can be a vertex
+        """
+
         def is_corner(cell: Point, dir_x: int, dir_y: int, grid: list[list]):
             x = cell[0]
             y = cell[1]
@@ -263,10 +324,10 @@ class SSG(Grid):
                 key = str(x) + "," + str(y)
                 cell = (x, y)
                 corners: list[tuple[int, int]] = [
-                    (-1, -1),  # Superior Esquerda
-                    (1, -1),  # Superior Direita
-                    (1, 1),  # Inferior Direita
-                    (-1, 1),  # Inferior Esquerda
+                    (-1, -1),  # Superior left
+                    (1, -1),  # Superior right
+                    (1, 1),  # Inferior right
+                    (-1, 1),  # Inferior left
                 ]
                 for corner in corners:
                     d_x = corner[0]
@@ -280,9 +341,13 @@ class SSG(Grid):
                     self.grid[y][x] = 1
 
     def create_verices(self) -> None:
+        """
+        Function that detects vertices in the grid using opencv Corner Harris Detection
+        Avaliable at: https://docs.opencv.org/4.x/dc/d0d/tutorial_py_features_harris.html
+        """
         start = time()
 
-        if len(self.grid) < MIN_SIZE or len(self.grid[0]) < MIN_SIZE:
+        if SIMPLE_VERTICE or len(self.grid) < MIN_SIZE or len(self.grid[0]) < MIN_SIZE:
             self.__create_simple_vertice()
             print(f"{len(self.vertices)} vertices created in {time() - start} seconds")
             return
@@ -340,6 +405,9 @@ class SSG(Grid):
         print(f"{len(self.vertices)} vertices created in {time() - start} seconds")
 
     def reduce_vertices(self) -> None:
+        """
+        Kills a vertex if it has more than MAX_VERTICES_PER_VERTEX neighbors
+        """
         start = time()
         to_delete: list[str] = []
         for goal_key in self.vertices:
@@ -351,7 +419,7 @@ class SSG(Grid):
                 key = str(move[0] + vertex.x) + "," + str(move[1] + vertex.y)
                 if key in self.vertices:
                     count_neighbors += 1
-            if count_neighbors > 1:
+            if count_neighbors > MAX_VERTICES_PER_VERTEX:
                 self.grid[vertex.y][vertex.x] = 1
                 to_delete.append(goal_key)
         self.vertices = dict(
@@ -366,7 +434,15 @@ class SSG(Grid):
         skip: set[str] = [],
         limit: int = -1,
     ) -> tuple[list[Vertex], int]:
+        """
+        A* search algorithm between two valid verices
+        """
+
         class Cell:
+            """
+            Auxiliar class to store opened and closed nodes and their weights
+            """
+
             def __init__(self, vertex: Vertex, weight: int, father: "Cell") -> None:
                 self.vertex = vertex
                 self.father = father
@@ -385,9 +461,11 @@ class SSG(Grid):
         opened_nodes: dict[str, Cell] = {key: Cell(self.vertices[key], 0, None)}
         closed_nodes: dict[str, Cell] = {}
         while opened_nodes:
+            # Get the node with the lowest heuristic
             lowest = min(opened_nodes.values())
             key = lowest.vertex.key
             curr = opened_nodes.pop(key)
+            # If the lowestt node overcame the limit, return empty path
             if limit >= 0 and curr.heuristic:
                 return [], -1
             if curr.is_destiny(destiny):
@@ -398,16 +476,19 @@ class SSG(Grid):
                     curr = curr.father
                 path.reverse()
                 return path, weight
+            # Closes the node
             closed_nodes[key] = curr
             curr_vertex = curr.vertex
             for edge in curr_vertex.edges:
                 curr_edge = curr_vertex.edges[edge]
                 next = curr_edge.destiny
                 next_key = next.key
+                # Check if the node is valid or has been already visited
                 if next_key in closed_nodes or next_key in skip:
                     continue
                 next_weight = curr.weight + curr_edge.weight
                 distance = Grid.h_distance((next.x, next.y), destiny)
+                # Create the node or update the heuristic if it has been visited and has a lower one
                 if next_key in opened_nodes:
                     if next_weight + distance < opened_nodes[next_key].heuristic:
                         opened_nodes[next_key].heuristic = next_weight + distance
@@ -418,6 +499,10 @@ class SSG(Grid):
         return [], -1
 
     def h_reachable(self, origin: "Vertex", destiny: Point) -> bool:
+        """
+        Function to check if there is a shortest path between two points whose length is equal
+        to the heuristic between them
+        """
         return (
             Grid.h_distance((origin.x, origin.y), destiny)
             == self.a_graph_search((origin.x, origin.y), destiny)[1]
@@ -425,6 +510,10 @@ class SSG(Grid):
 
 
 class TSG(SSG):
+    """
+    Two SubLevel Graph
+    """
+
     def __init__(self, grid: Map = [[]]) -> None:
         super().__init__(grid)
         self.local_goals: dict[str, Vertex] = {}
@@ -438,6 +527,10 @@ class TSG(SSG):
         self.convert_to_tsg()
 
     def convert_to_tsg(self) -> None:
+        """
+        Converts the Simple SubLevel Graph to a Two SubLevel Graph by identifying the
+        verices that can be classified as local goals
+        """
         start = time()
         global_goals: dict[str, Vertex] = dict(self.vertices)
         for s in self.vertices:
@@ -445,6 +538,7 @@ class TSG(SSG):
             new_edges: dict[str, tuple[Vertex, Vertex]] = {}
             is_local: bool = True
             visited_edges: set[tuple[str, str]] = set()
+            # Iterate over all neighbors of the vertex to identify local goals
             for p in vert.edges:
                 for q in vert.edges:
                     if p == q or (q, p) in visited_edges:
@@ -458,6 +552,9 @@ class TSG(SSG):
                     _, d = self.a_graph_search(
                         (origin.x, origin.y), (destiny.x, destiny.y), skip, limit
                     )
+                    # If when removing the vertex, the distance between the neighbors
+                    # that not passes between another local goal increases and they are
+                    # not h-reachable, then the vertex is a global goal
                     if d == -1 or d > limit:
                         if self.h_reachable(origin, (destiny.x, destiny.y)):
                             check_key = q + "," + p
@@ -468,12 +565,14 @@ class TSG(SSG):
                             break
                 if not is_local:
                     break
+            # Creates the necessary edges to connect the local goals
             if is_local:
                 for edge in new_edges:
                     edge_tuple = new_edges[edge]
                     edge_tuple[0].add_edge(edge_tuple[1])
                 self.local_goals[s] = vert
 
+        # Removes the local goals from the list and stores the global goals into "vertices" variable
         for l in self.local_goals:
             goal = self.local_goals[l]
             for e in goal.edges:
@@ -490,6 +589,9 @@ class TSG(SSG):
     def a_grid_graph_search(
         self, origin: Point, destiny: Point
     ) -> tuple[list[Point], int, list[Point], list[Point]]:
+        """
+        A* search between two points using the visibility graph help
+        """
         print("-- A* Grid Graph Search --")
         if (
             self._is_out_of_bounds(origin[0], origin[1])
@@ -500,6 +602,7 @@ class TSG(SSG):
             return [], -1, [], []
         start_is_vertex = False
         end_is_vertex = False
+        # Creates the origin and destiny as vertices from the visibility graph
         if self.grid[origin[1]][origin[0]] == 1:
             vertex = Vertex(origin[0], origin[1], self.grid)
             s_key = str(origin[0]) + "," + str(origin[1])
@@ -519,6 +622,7 @@ class TSG(SSG):
         end.create_edges()
         end.reduce_edges()
 
+        # Temporarily adds the direct origin and destiny local goals to the list of vertices
         for e in start.edges:
             edge_keys = [str(e) for e in start.edges]
             for e in edge_keys:
@@ -533,8 +637,10 @@ class TSG(SSG):
                     self.vertices[d.key] = self.local_goals.pop(d.key)
 
         skip = set([x for x in self.local_goals])
+        # Find shortest vertices path that not passes between any local goal
         path, w = self.a_graph_search((start.x, start.y), (end.x, end.y), skip=skip)
 
+        # Removes the direct origin and destiny local goals from the list of vertices
         for e in start.edges:
             edge_keys = [str(e) for e in start.edges]
             for e in edge_keys:
@@ -550,6 +656,7 @@ class TSG(SSG):
                 if edge.is_local:
                     self.local_goals[d.key] = self.vertices.pop(d.key)
 
+        # If origin or destiny are not vertices, remove them from the grid
         if start_is_vertex:
             edge_keys = [str(e) for e in start.edges]
             for e in edge_keys:
@@ -568,6 +675,7 @@ class TSG(SSG):
         if not path:
             return [], -1, [], []
 
+        # Converts the vertices path into a grid path, using a simple A* search between each node
         grid_weight = 0
         vertex = path.pop(0)
         grid_path: list[Point] = []

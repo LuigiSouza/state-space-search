@@ -13,6 +13,10 @@ Map = Grid.Map
 def generate_bench_points(
     n: int, grid: Map, file_name: str = "points.txt"
 ) -> list[Point]:
+    """
+    Function to generate a list of n random valid points on the grid. The points are
+    returned as a list of tuples and saved in a file.
+    """
     bench_points: list[Point] = []
     max_tries = n * n
     with open(file_name, "w") as f:
@@ -29,6 +33,9 @@ def generate_bench_points(
 
 
 def read_bench_points(file_name: str = "points.txt") -> list[Point]:
+    """
+    Reads a file and returns a list of points.
+    """
     bench_points: list[Point] = []
     with open(file_name, "r") as f:
         for line in f.readlines():
@@ -40,13 +47,20 @@ def read_bench_points(file_name: str = "points.txt") -> list[Point]:
 
 
 def plot_result(
-    grid: Map, result: list[Point], closed: list[Point], opened: list[Point]
+    grid: Map,
+    origin: Point,
+    destiny: Point,
+    result: list[Point],
+    closed: list[Point],
+    opened: list[Point],
 ) -> None:
+    """
+    Plots the result of the search with opened, closed and result nodes. The result is
+    displayed in the window.
+    """
     plot_grid = [
         [[y * 255] * 3 if type(y) == int else [255, 0, 0] for y in x] for x in grid
     ]
-    origin = result[0]
-    destiny = result[-1]
     for i in opened:
         if i not in result:
             plot_grid[i[1]][i[0]] = [122, 122, 0]
@@ -69,6 +83,10 @@ def plot_side_by_side(
     results: list[tuple[list[Point], list[Point], list[Point]], str],
     file_name: str = "result.png",
 ) -> None:
+    """
+    Plot N resuls of the search, displayed side by side to compare. The results are
+    stored in a file or displayed in the window.
+    """
     _, axs = plt.subplots(1, len(results))
     for idx, res in enumerate(results):
         sub: Axes = axs[idx]
@@ -89,7 +107,10 @@ def plot_side_by_side(
         sub.plot(x, y, "g-", lw=1.5)
         sub.plot(origin[0], origin[1], "bo")
         sub.plot(destiny[0], destiny[1], "go" if result else "ro")
-    plt.savefig("figs/" + file_name, dpi=300)
+    if file_name:
+        plt.savefig("figs2/" + file_name, dpi=300)
+    else:
+        plt.show()
 
 
 def benchmark(
@@ -99,15 +120,22 @@ def benchmark(
     plot: bool = False,
     file_name: str = "results.txt",
 ) -> None:
+    """
+    Given a list of valid points and a grid, the function runs the search for each
+    point to store the results into a file and plot it into a image. Two points are
+    not visited twice and the results are used to compare the performance between a
+    simple A* search and with the help of visualization graph.
+    """
     visited_points: set[tuple[Point, Point]] = set()
     n: int = len(points) - 1
     limit = n * (n + 1) // 2
     with open(file_name, "w") as f:
         for idx, origin in enumerate(points):
             tests: int = 0
-            print(f"\nProgress: {idx+1}/{n}")
+            print(f"\nProgress: {idx}/{n}")
             while tests < tests_per_point and len(visited_points) < limit:
                 destiny: Point = None
+                # Get a random destiny point from the list of points that was not visited by origin
                 while not destiny:
                     next = random.choice(points)
                     if (
@@ -118,6 +146,7 @@ def benchmark(
                         destiny = next
                 result_str = f"{origin} {destiny} "
 
+                # A* search with Visibility Graph
                 start_time = time()
                 print(f"Origin: {origin} - Destination: {destiny}")
                 result, weight, closed, opened = grid.a_grid_graph_search(
@@ -129,6 +158,7 @@ def benchmark(
                 results = [(result, closed, opened, "A* with Visibility Graph")]
                 result_str += f"{weight},{len(closed)},{end_time},"
 
+                # A* search without Visibility Graph
                 start_time = time()
                 print("-- A* without Visibility Graph --")
                 result, weight, closed, opened = grid.a_grid_search(origin, destiny)
@@ -148,16 +178,7 @@ def benchmark(
 
 
 def main():
-
-    grid = [
-        [1, 1, 1, 1, 1, 1, 0, 1],
-        [1, 0, 0, 1, 1, 1, 0, 1],
-        [1, 1, 1, 1, 1, 1, 0, 1],
-        [1, 1, 1, 1, 1, 1, 0, 1],
-        [1, 1, 1, 1, 1, 1, 1, 1],
-    ]
-
-    tsg = Grid.TSG(grid)
+    tsg = Grid.TSG()
     tsg.create_from_file("maps/Berlin_0_1024.map")
     bench_points = read_bench_points()
     benchmark(bench_points, tsg, plot=True)
