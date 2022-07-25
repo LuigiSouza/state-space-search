@@ -1,5 +1,4 @@
 from __future__ import annotations
-from math import ceil
 
 from matplotlib import pyplot as plt
 from .Vertex import Vertex
@@ -13,7 +12,7 @@ SQRT_2 = 1.4
 # Minimal grid size to use the Corner's algorithm
 MIN_SIZE = 15
 # If true, the simple vertice detection method is used. If false, the Corner Harris one is used
-USE_OPENCV = True
+USE_OPENCV = False
 # Limit of vertices alowed to be around another one
 MAX_VERTICES_PER_VERTEX = 1
 
@@ -298,15 +297,17 @@ class SSG(Grid):
         vertex = path.pop(0)
         grid_path: list[Point] = []
         closed_nodes: list[Point] = []
+        opened_nodes: list[Point] = []
         while path:
             next = path.pop(0)
-            p, w, c = self.a_grid_search((vertex.x, vertex.y), (next.x, next.y))
+            p, w, c, o = self.a_grid_search((vertex.x, vertex.y), (next.x, next.y))
             grid_weight += w
             grid_path.extend(p)
             closed_nodes.extend(c)
+            opened_nodes.extend(o)
             vertex = next
 
-        return grid_path, grid_weight, closed_nodes
+        return grid_path, grid_weight, closed_nodes, opened_nodes
 
     def __create_simple_vertice(self):
         """
