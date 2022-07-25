@@ -213,7 +213,7 @@ class SSG(Grid):
         """
         All steps needed to create visibility graph
         """
-        self.create_verices()
+        self.create_vertices()
         self.reduce_vertices()
         self.create_edges()
         self.reduce_edges()
@@ -346,7 +346,7 @@ class SSG(Grid):
                 else:
                     self.grid[y][x] = 1
 
-    def create_verices(self) -> None:
+    def create_vertices(self) -> None:
         """
         Function that detects vertices in the grid using opencv Corner Harris Detection
         Avaliable at: https://docs.opencv.org/4.x/dc/d0d/tutorial_py_features_harris.html
