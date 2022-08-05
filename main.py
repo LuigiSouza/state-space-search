@@ -114,6 +114,10 @@ def plot_side_by_side(
 
 
 def plot_resume(fst_file: str, snd_file: str):
+    """
+    Plot and compare the results of two algorithms.
+    """
+
     resume = []
     for file in [fst_file, snd_file]:
         with open(file, "r") as txt:
@@ -347,6 +351,7 @@ def main():
     tsg.create_from_file("maps/Berlin_0_1024.map")
     bench_points = read_bench_points()
     benchmark(bench_points, tsg, plot=True)
+    plot_resume("results_cv.txt", "results_df.txt")
 
 
 if __name__ == "__main__":
