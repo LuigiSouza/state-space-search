@@ -12,7 +12,7 @@ SQRT_2 = 1.4
 # Minimal grid size to use the Corner's algorithm
 MIN_SIZE = 15
 # If true, the simple vertice detection method is used. If false, the Corner Harris one is used
-USE_OPENCV = False
+USE_OPENCV = True
 # Limit of vertices alowed to be around another one
 MAX_VERTICES_PER_VERTEX = 1
 
@@ -199,6 +199,14 @@ class Grid:
         dist_y = abs(origin[1] - destiny[1])
         return int(10 * (abs(dist_x - dist_y) + min(dist_x, dist_y) * SQRT_2))
 
+    def is_corner(self, cell: Point, dir_x: int, dir_y: int, grid: list[list]):
+        x = cell[0]
+        y = cell[1]
+        pos = (x + dir_x, y + dir_y)
+        if self._is_out_of_bounds(x, y) or self._is_out_of_bounds(pos[0], pos[1]):
+            return False
+        return grid[pos[1]][pos[0]] == 0 and grid[y][pos[0]] != 0 != grid[pos[1]][x]
+
 
 class SSG(Grid):
     """
@@ -214,7 +222,7 @@ class SSG(Grid):
         All steps needed to create visibility graph
         """
         self.create_verices()
-        self.reduce_vertices()
+        # self.reduce_vertices()
         self.create_edges()
         self.reduce_edges()
 
@@ -314,14 +322,6 @@ class SSG(Grid):
         Funcion to iterate through and detect if a pixel can be a vertex
         """
 
-        def is_corner(cell: Point, dir_x: int, dir_y: int, grid: list[list]):
-            x = cell[0]
-            y = cell[1]
-            pos = (x + dir_x, y + dir_y)
-            if self._is_out_of_bounds(x, y) or self._is_out_of_bounds(pos[0], pos[1]):
-                return False
-            return grid[pos[1]][pos[0]] == 0 and grid[y][pos[0]] == 1 == grid[pos[1]][x]
-
         self.vertices: dict[str, Vertex] = {}
         for y, row in enumerate(self.grid):
             for x, value in enumerate(row):
@@ -338,7 +338,7 @@ class SSG(Grid):
                 for corner in corners:
                     d_x = corner[0]
                     d_y = corner[1]
-                    if is_corner(cell, d_x, d_y, self.grid):
+                    if self.is_corner(cell, d_x, d_y, self.grid):
                         vertex = Vertex(x, y, self.grid)
                         self.vertices[key] = vertex
                         self.grid[y][x] = vertex
@@ -351,7 +351,9 @@ class SSG(Grid):
         Function that detects vertices in the grid using opencv Corner Harris Detection
         Avaliable at: https://docs.opencv.org/4.x/dc/d0d/tutorial_py_features_harris.html
         """
+
         start = time()
+        self.vertices: dict[str, Vertex] = {}
 
         if not USE_OPENCV or len(self.grid) < MIN_SIZE or len(self.grid[0]) < MIN_SIZE:
             self.__create_simple_vertice()
@@ -366,48 +368,27 @@ class SSG(Grid):
         gray = np.float32(gray)
         dst = cv.cornerHarris(gray, 2, 3, 0.04)
         dst = cv.dilate(dst, None)
-        _, dst = cv.threshold(dst, 0.01 * dst.max(), 255, 0)
-        dst = np.uint8(dst)
-        # find centroids
-        _, _, _, centroids = cv.connectedComponentsWithStats(dst, connectivity=4)
-        # define the criteria to stop and refine the corners
-        criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.01)
-        corners = cv.cornerSubPix(
-            gray, np.float32(centroids), (5, 5), (-1, -1), criteria
-        )
-        # Now draw them
-        corners: np.ndarray = np.int0(corners)
-        for c in corners:
-            x = int(c[0])
-            y = int(c[1])
-            if self._is_out_of_bounds(x, y) or self.grid[y][x] == 0:
-                bfs = [(x, y)]
-                closed: set[Point] = set()
-                while bfs:
-                    node = bfs.pop(0)
-                    if node in closed:
-                        continue
-                    closed.add(node)
-                    neighbors: list[Point] = []
-                    for m in movements:
-                        curr = (m[0] + node[0], m[1] + node[1])
-                        if self._is_out_of_bounds(curr[0], curr[1]):
-                            continue
-                        if self.grid[curr[1]][curr[0]] == 0:
-                            if curr not in closed:
-                                bfs.append(curr)
-                        else:
-                            neighbors.append(curr)
-                    if neighbors:
-                        mid = (0 + len(neighbors)) // 2
-                        x = neighbors[mid][0]
-                        y = neighbors[mid][1]
-                        break
-            key = str(x) + "," + str(y)
-            vertex = Vertex(x, y, self.grid)
-            self.grid[y][x] = vertex
-            self.vertices[key] = vertex
-
+        new_plt = dst > 0.01 * dst.max()
+        indexes = np.where(new_plt == True)
+        for x, y in zip(indexes[1], indexes[0]):
+            if self.grid[y][x] == 0:
+                continue
+            corners: list[tuple[int, int]] = [
+                (-1, -1),  # Superior left
+                (1, -1),  # Superior right
+                (1, 1),  # Inferior right
+                (-1, 1),  # Inferior left
+            ]
+            for corner in corners:
+                d_x = corner[0]
+                d_y = corner[1]
+                if self.is_corner((x, y), d_x, d_y, self.grid):
+                    vertex = Vertex(x, y, self.grid)
+                    self.grid[y][x] = vertex
+                    self.vertices[vertex.key] = vertex
+                    break
+            else:
+                self.grid[y][x] = 1
         print(f"{len(self.vertices)} vertices created in {time() - start} seconds")
 
     def reduce_vertices(self) -> None:

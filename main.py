@@ -113,6 +113,171 @@ def plot_side_by_side(
         plt.show()
 
 
+def plot_resume(fst_file: str, snd_file: str):
+    resume = []
+    for file in [fst_file, snd_file]:
+        with open(file, "r") as txt:
+            # Referencing graph
+            same_w = greater_w = lower_w = 0
+            graph_wheights = []
+            grid_wheights = []
+            graph_times = []
+            grid_times = []
+            graph_nodes = []
+            grid_nodes = []
+            for line in txt.readlines():
+                line = line.strip().split(";")
+                (
+                    _,
+                    _,
+                    graph_w,
+                    graph_node,
+                    graph_time,
+                    grid_w,
+                    grid_node,
+                    grid_time,
+                ) = line
+                graph_w = int(graph_w)
+                grid_w = int(grid_w)
+                graph_wheights.append(graph_w)
+                grid_wheights.append(grid_w)
+                graph_times.append(float(graph_time))
+                grid_times.append(float(grid_time))
+                graph_nodes.append(int(graph_node))
+                grid_nodes.append(int(grid_node))
+                same_w += graph_w == grid_w
+                lower_w += graph_w < grid_w
+                greater_w += graph_w > grid_w
+            data = [lower_w, same_w, greater_w]
+
+            _, axs = plt.subplots(2, 2)
+            axs[0][0].set_title("Weight comparison")
+            axs[0][0].bar(["Graph < Grid", "Equal", "Graph > Grid"], data)
+
+            graw = sorted(graph_wheights)
+            griw = sorted(grid_wheights)
+            axs[1][0].scatter(
+                [x for x in range(len(griw))],
+                griw,
+                marker="o",
+                label="Without Visibility Graph",
+                s=20.0,
+                c="b",
+            )
+            axs[1][0].scatter(
+                [x for x in range(len(graw))],
+                graw,
+                marker="o",
+                label="With Visibility Graph",
+                s=10.0,
+                c="r",
+            )
+            axs[1][0].legend(
+                loc="upper left", markerscale=2.0, scatterpoints=1, fontsize=10
+            )
+            axs[1][0].set_ylabel("Weight")
+            axs[1][0].axes.get_xaxis().set_visible(False)
+
+            axs[0][1].set_title("Time comparison")
+            axs[0][1].set_ylabel("Time (seconds)")
+            axs[0][1].set_xlabel("Weight")
+            axs[0][1].scatter(
+                graph_wheights,
+                graph_times,
+                marker="o",
+                label="With Visibility Graph",
+                s=20.0,
+                c="b",
+            )
+            axs[0][1].scatter(
+                grid_wheights,
+                grid_times,
+                marker="o",
+                label="Without Visibility Graph",
+                s=10.0,
+                c="r",
+            )
+            axs[0][1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
+
+            axs[1][1].set_title("Weight comparison")
+            axs[1][1].set_ylabel("Visited nodes")
+            axs[1][1].set_xlabel("Weight")
+            axs[1][1].scatter(
+                graph_wheights,
+                graph_nodes,
+                marker="o",
+                label="With Visibility Graph",
+                s=20.0,
+                c="b",
+            )
+            axs[1][1].scatter(
+                grid_wheights,
+                grid_nodes,
+                marker="o",
+                label="Without Visibility Graph",
+                s=10.0,
+                c="r",
+            )
+            axs[1][1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
+            resume.append(
+                (
+                    graph_wheights,
+                    grid_wheights,
+                    graph_times,
+                    grid_times,
+                    graph_nodes,
+                    grid_nodes,
+                )
+            )
+
+            plt.show()
+
+    _, axs = plt.subplots(len(resume))
+
+    axs[0].set_title("Vertice Aproach Comparasion")
+    axs[0].scatter(
+        [x for x in range(len(resume[1][0]))],
+        sorted(resume[1][0]),
+        marker="o",
+        label=fst_file,
+        s=20.0,
+        c="b",
+    )
+    axs[0].scatter(
+        [x for x in range(len(resume[0][0]))],
+        sorted(resume[0][0]),
+        marker="o",
+        label=snd_file,
+        s=10.0,
+        c="r",
+    )
+    axs[0].set_ylabel("Weight")
+    axs[0].axes.get_xaxis().set_visible(False)
+    axs[0].legend(loc="upper left", markerscale=2.0, scatterpoints=1, fontsize=10)
+
+    axs[1].scatter(
+        resume[1][0],
+        resume[1][2],
+        marker="o",
+        label=fst_file,
+        s=20.0,
+        c="b",
+    )
+    axs[1].scatter(
+        resume[0][0],
+        resume[0][2],
+        marker="o",
+        label=snd_file,
+        s=10.0,
+        c="r",
+    )
+    axs[1].set_xlabel("Weight")
+    axs[1].set_ylabel("Time (seconds)")
+    axs[1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
+
+    plt.show()
+
+
 def benchmark(
     points: list[Point],
     grid: Grid.Grid,
