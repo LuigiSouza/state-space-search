@@ -74,6 +74,9 @@ def plot_result(
     plt.plot(origin[0], origin[1], "bo")
     plt.plot(destiny[0], destiny[1], "go")
     plt.show()
+    plt.clf()
+    plt.cla()
+    plt.close()
 
 
 def plot_side_by_side(
@@ -111,6 +114,9 @@ def plot_side_by_side(
         plt.savefig("figs/" + file_name, dpi=300)
     else:
         plt.show()
+    plt.clf()
+    plt.cla()
+    plt.close()
 
 
 def plot_resume(fst_file: str, snd_file: str):
@@ -260,26 +266,19 @@ def plot_resume(fst_file: str, snd_file: str):
     axs[0].legend(loc="upper left", markerscale=2.0, scatterpoints=1, fontsize=10)
 
     axs[1].scatter(
-        resume[1][0],
-        resume[1][2],
-        marker="o",
-        label=fst_file,
-        s=20.0,
-        c="b",
+        resume[1][0], resume[1][2], marker="o", label=fst_file, s=20.0, c="b"
     )
     axs[1].scatter(
-        resume[0][0],
-        resume[0][2],
-        marker="o",
-        label=snd_file,
-        s=10.0,
-        c="r",
+        resume[0][0], resume[0][2], marker="o", label=snd_file, s=10.0, c="r"
     )
     axs[1].set_xlabel("Weight")
     axs[1].set_ylabel("Time (seconds)")
     axs[1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
 
     plt.show()
+    plt.clf()
+    plt.cla()
+    plt.close()
 
 
 def benchmark(

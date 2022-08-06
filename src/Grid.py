@@ -55,6 +55,9 @@ class Grid:
         ]
         plt.imshow(plot_grid)
         plt.show()
+        plt.clf()
+        plt.cla()
+        plt.close()
 
     def a_grid_graph_search(
         self, origin: Point, destiny: Point
@@ -161,6 +164,7 @@ class Grid:
                 # Create the node or update the heuristic if it has been visited and has a lower one
                 if next_key in opened_nodes:
                     if next_weight + distance < opened_nodes[next_key].heuristic:
+                        opened_nodes[next_key].weight = next_weight
                         opened_nodes[next_key].heuristic = next_weight + distance
                         opened_nodes[next_key].father = curr
                 else:
