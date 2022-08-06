@@ -221,7 +221,7 @@ class SSG(Grid):
         """
         All steps needed to create visibility graph
         """
-        self.create_verices()
+        self.create_vertices()
         # self.reduce_vertices()
         self.create_edges()
         self.reduce_edges()
