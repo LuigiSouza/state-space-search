@@ -221,7 +221,7 @@ class SSG(Grid):
         """
         All steps needed to create visibility graph
         """
-        self.create_verices()
+        self.create_vertices()
         # self.reduce_vertices()
         self.create_edges()
         self.reduce_edges()
@@ -422,7 +422,7 @@ class SSG(Grid):
         limit: int = -1,
     ) -> tuple[list[Vertex], int]:
         """
-        A* search algorithm between two valid verices
+        A* search algorithm between two valid vertices
         """
 
         class Cell:
@@ -516,7 +516,7 @@ class TSG(SSG):
     def convert_to_tsg(self) -> None:
         """
         Converts the Simple SubLevel Graph to a Two SubLevel Graph by identifying the
-        verices that can be classified as local goals
+        vertices that can be classified as local goals
         """
         start = time()
         global_goals: dict[str, Vertex] = dict(self.vertices)
