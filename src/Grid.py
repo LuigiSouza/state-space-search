@@ -7,8 +7,9 @@ from time import time
 import numpy as np
 import cv2 as cv
 
-# Square root of 2
-SQRT_2 = 1.4
+# Travel weights
+DIAGONAL = 14
+NORMAL = 10
 # Minimal grid size to use the Corner's algorithm
 MIN_SIZE = 15
 # If true, the simple vertice detection method is used. If false, the Corner Harris one is used
@@ -45,6 +46,20 @@ class Grid:
         """
         return x < 0 or y < 0 or y >= len(self.grid) or x >= len(self.grid[y])
 
+    def _is_corner(self, cell: Point, dir_x: int, dir_y: int):
+        """
+        Function to check if a Point is a corner related to a direction
+        """
+        x = cell[0]
+        y = cell[1]
+        pos = (x + dir_x, y + dir_y)
+        if self._is_out_of_bounds(x, y) or self._is_out_of_bounds(pos[0], pos[1]):
+            return False
+        return (
+            self.grid[pos[1]][pos[0]] == 0
+            and self.grid[y][pos[0]] != 0 != self.grid[pos[1]][x]
+        )
+
     def plot_grid(self) -> None:
         """
         Plot the grid
@@ -80,7 +95,7 @@ class Grid:
         return [], -1
 
     def a_grid_search(
-        self, origin: Point, destiny: Point
+        self, origin: Point, destiny: Point, limit: int = -1
     ) -> tuple[list[Point], int, list[Point], list[Point]]:
         """
         A* search algorithm given an origin and the destiny
@@ -138,6 +153,9 @@ class Grid:
                     [(closed_nodes[i].x, closed_nodes[i].y) for i in closed_nodes],
                     [(opened_nodes[i].x, opened_nodes[i].y) for i in opened_nodes],
                 )
+            # If the lowest node overcame the limit, return empty path
+            if limit > 0 and curr.heuristic > limit:
+                return [], -1, [], []
             # Closes the node
             closed_nodes[key] = curr
             to_x = curr.x - destiny[0]
@@ -151,7 +169,7 @@ class Grid:
                 m_y = move[1] + curr.y
                 next_key = str(m_x) + "," + str(m_y)
                 is_diagonal = move[0] != 0 and move[1] != 0
-                next_weight = curr.weight + int(10 * ((SQRT_2 * is_diagonal) or 1))
+                next_weight = curr.weight + (DIAGONAL if is_diagonal else NORMAL)
                 # Check if the node is valid or has been already visited
                 if (
                     next_key in closed_nodes
@@ -161,6 +179,8 @@ class Grid:
                 ):
                     continue
                 distance = Grid.h_distance((m_x, m_y), destiny)
+                if limit > 0 and distance + next_weight > limit:
+                    continue
                 # Create the node or update the heuristic if it has been visited and has a lower one
                 if next_key in opened_nodes:
                     if next_weight + distance < opened_nodes[next_key].heuristic:
@@ -201,15 +221,7 @@ class Grid:
         """
         dist_x = abs(origin[0] - destiny[0])
         dist_y = abs(origin[1] - destiny[1])
-        return int(10 * (abs(dist_x - dist_y) + min(dist_x, dist_y) * SQRT_2))
-
-    def is_corner(self, cell: Point, dir_x: int, dir_y: int, grid: list[list]):
-        x = cell[0]
-        y = cell[1]
-        pos = (x + dir_x, y + dir_y)
-        if self._is_out_of_bounds(x, y) or self._is_out_of_bounds(pos[0], pos[1]):
-            return False
-        return grid[pos[1]][pos[0]] == 0 and grid[y][pos[0]] != 0 != grid[pos[1]][x]
+        return NORMAL * max(dist_x, dist_y) + (DIAGONAL - NORMAL) * min(dist_x, dist_y)
 
 
 class SSG(Grid):
@@ -220,6 +232,34 @@ class SSG(Grid):
     def __init__(self, grid: Map = [[]]) -> None:
         super().__init__(grid)
         self.vertices: dict[str, Vertex] = {}
+
+    def plot_edges(self) -> None:
+        """
+        Plot the grid
+        """
+        plot_grid = [
+            [[y * 255] * 3 if type(y) == int else [255, 0, 0] for y in x]
+            for x in self.grid
+        ]
+        edges_x = [
+            (y.origin.x, y.destiny.x)
+            for x in self.vertices.values()
+            for y in x.edges.values()
+        ]
+        edges_x = [[x[0] for x in edges_x], [x[1] for x in edges_x]]
+        edges_y = [
+            (y.origin.y, y.destiny.y)
+            for x in self.vertices.values()
+            for y in x.edges.values()
+        ]
+        edges_y = [[y[0] for y in edges_y], [y[1] for y in edges_y]]
+
+        plt.imshow(plot_grid)
+        plt.plot(edges_x, edges_y, "b-", lw=0.3)
+        plt.show()
+        plt.clf()
+        plt.cla()
+        plt.close()
 
     def create_graph(self) -> None:
         """
@@ -342,7 +382,7 @@ class SSG(Grid):
                 for corner in corners:
                     d_x = corner[0]
                     d_y = corner[1]
-                    if self.is_corner(cell, d_x, d_y, self.grid):
+                    if self._is_corner(cell, d_x, d_y):
                         vertex = Vertex(x, y, self.grid)
                         self.vertices[key] = vertex
                         self.grid[y][x] = vertex
@@ -386,7 +426,7 @@ class SSG(Grid):
             for corner in corners:
                 d_x = corner[0]
                 d_y = corner[1]
-                if self.is_corner((x, y), d_x, d_y, self.grid):
+                if self._is_corner((x, y), d_x, d_y):
                     vertex = Vertex(x, y, self.grid)
                     self.grid[y][x] = vertex
                     self.vertices[vertex.key] = vertex
@@ -456,9 +496,6 @@ class SSG(Grid):
             lowest = min(opened_nodes.values())
             key = lowest.vertex.key
             curr = opened_nodes.pop(key)
-            # If the lowestt node overcame the limit, return empty path
-            if limit >= 0 and curr.heuristic:
-                return [], -1
             if curr.is_destiny(destiny):
                 weight = curr.weight
                 path: list[Vertex] = []
@@ -467,6 +504,9 @@ class SSG(Grid):
                     curr = curr.father
                 path.reverse()
                 return path, weight
+            # If the lowest node overcame the limit, return empty path
+            if limit > 0 and curr.heuristic > limit:
+                return [], -1
             # Closes the node
             closed_nodes[key] = curr
             curr_vertex = curr.vertex
@@ -492,12 +532,39 @@ class SSG(Grid):
     def h_reachable(self, origin: "Vertex", destiny: Point) -> bool:
         """
         Function to check if there is a shortest path between two points whose length is equal
-        to the heuristic between them
+        to the heuristic between them (they are h-reachable)
         """
-        return (
-            Grid.h_distance((origin.x, origin.y), destiny)
-            == self.a_graph_search((origin.x, origin.y), destiny)[1]
-        )
+
+        def clearence(
+            origin: Point,
+            dir_x: int,
+            dir_y: int,
+        ) -> int:
+            curr = (origin[0] + dir_x, origin[1] + dir_y)
+            max: int = 0
+            while not self._is_out_of_bounds(curr[0] + dir_x, curr[1] + dir_y):
+                if self.grid[curr[1]][curr[0]] == 0:
+                    return max
+                if curr == destiny:
+                    return max + 1
+                curr = (curr[0] + dir_x, curr[1] + dir_y)
+                max += 1
+            return max
+
+        dir_x = min(max(-1, destiny[0] - origin.x), 1)
+        dir_y = min(max(-1, destiny[1] - origin.y), 1)
+        curr = (origin.x, origin.y)
+        while Vertex.has_diagonal(curr, dir_x, dir_y, self.grid):
+            curr = (curr[0] + dir_x, curr[1] + dir_y)
+            lim_h = clearence(curr, dir_x, 0) if dir_x else 0
+            lim_v = clearence(curr, 0, dir_y) if dir_y else 0
+            if curr[1] == destiny[1] and curr[0] + (dir_x * lim_h) == destiny[0]:
+                return True
+            if curr[1] + (dir_y * lim_v) == destiny[1] and curr[0] == destiny[0]:
+                return True
+            if curr[1] == destiny[1] or curr[0] == destiny[0]:
+                return False
+        return False
 
 
 class TSG(SSG):
@@ -508,6 +575,36 @@ class TSG(SSG):
     def __init__(self, grid: Map = [[]]) -> None:
         super().__init__(grid)
         self.local_goals: dict[str, Vertex] = {}
+
+    def plot_edges(self) -> None:
+        """
+        Plot the grid
+        """
+        plot_grid = [
+            [[y * 255] * 3 if type(y) == int else [255, 0, 0] for y in x]
+            for x in self.grid
+        ]
+        edges_x = [
+            (y.origin.x, y.destiny.x)
+            for x in self.vertices.values()
+            for y in x.edges.values()
+            if not y.is_local
+        ]
+        edges_x = [[x[0] for x in edges_x], [x[1] for x in edges_x]]
+        edges_y = [
+            (y.origin.y, y.destiny.y)
+            for x in self.vertices.values()
+            for y in x.edges.values()
+            if not y.is_local
+        ]
+        edges_y = [[y[0] for y in edges_y], [y[1] for y in edges_y]]
+
+        plt.imshow(plot_grid)
+        plt.plot(edges_x, edges_y, "b-", lw=0.3)
+        plt.show()
+        plt.clf()
+        plt.cla()
+        plt.close()
 
     def create_from_file(self, file_name: str) -> None:
         self.read_file(file_name)

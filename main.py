@@ -347,10 +347,9 @@ def benchmark(
 
 def main():
     tsg = Grid.TSG()
-    tsg.create_from_file("maps/Berlin_0_1024.map")
+    tsg.create_from_file("maps/Denver_2_1024.map")
     bench_points = read_bench_points()
     benchmark(bench_points, tsg, plot=True)
-    plot_resume("results_cv.txt", "results_df.txt")
 
 
 if __name__ == "__main__":
