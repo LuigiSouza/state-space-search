@@ -534,37 +534,11 @@ class SSG(Grid):
         Function to check if there is a shortest path between two points whose length is equal
         to the heuristic between them (they are h-reachable)
         """
-
-        def clearence(
-            origin: Point,
-            dir_x: int,
-            dir_y: int,
-        ) -> int:
-            curr = (origin[0] + dir_x, origin[1] + dir_y)
-            max: int = 0
-            while not self._is_out_of_bounds(curr[0] + dir_x, curr[1] + dir_y):
-                if self.grid[curr[1]][curr[0]] == 0:
-                    return max
-                if curr == destiny:
-                    return max + 1
-                curr = (curr[0] + dir_x, curr[1] + dir_y)
-                max += 1
-            return max
-
-        dir_x = min(max(-1, destiny[0] - origin.x), 1)
-        dir_y = min(max(-1, destiny[1] - origin.y), 1)
-        curr = (origin.x, origin.y)
-        while Vertex.has_diagonal(curr, dir_x, dir_y, self.grid):
-            curr = (curr[0] + dir_x, curr[1] + dir_y)
-            lim_h = clearence(curr, dir_x, 0) if dir_x else 0
-            lim_v = clearence(curr, 0, dir_y) if dir_y else 0
-            if curr[1] == destiny[1] and curr[0] + (dir_x * lim_h) == destiny[0]:
-                return True
-            if curr[1] + (dir_y * lim_v) == destiny[1] and curr[0] == destiny[0]:
-                return True
-            if curr[1] == destiny[1] or curr[0] == destiny[0]:
-                return False
-        return False
+        h_distance = Grid.h_distance((origin.x, origin.y), destiny)
+        return (
+            self.a_graph_search((origin.x, origin.y), destiny, limit=h_distance)[1]
+            == h_distance
+        )
 
 
 class TSG(SSG):
@@ -611,7 +585,11 @@ class TSG(SSG):
         self.create_graph()
 
     def create_graph(self) -> None:
-        super().create_graph()
+        """
+        All steps needed to create visibility graph
+        """
+        self.create_vertices()
+        self.create_edges()
         self.convert_to_tsg()
 
     def convert_to_tsg(self) -> None:
@@ -724,7 +702,7 @@ class TSG(SSG):
                 if d.key in self.local_goals:
                     self.vertices[d.key] = self.local_goals.pop(d.key)
 
-        skip = set([x for x in self.local_goals])
+        skip = set(self.local_goals.keys())
         # Find shortest vertices path that not passes between any local goal
         path, w = self.a_graph_search((start.x, start.y), (end.x, end.y), skip=skip)
 
