@@ -515,7 +515,7 @@ class SSG(Grid):
                 next = curr_edge.destiny
                 next_key = next.key
                 # Check if the node is valid or has been already visited
-                if next_key in closed_nodes or next_key in skip:
+                if next_key in closed_nodes or next_key in skip or curr_edge.is_local:
                     continue
                 next_weight = curr.weight + curr_edge.weight
                 distance = Grid.h_distance((next.x, next.y), destiny)
@@ -689,38 +689,36 @@ class TSG(SSG):
         end.reduce_edges()
 
         # Temporarily adds the direct origin and destiny local goals to the list of vertices
+        temporary_global: set[str] = set()
         for e in start.edges:
             edge_keys = [str(e) for e in start.edges]
             for e in edge_keys:
                 d = start.edges[e].destiny
                 if d.key in self.local_goals:
-                    self.vertices[d.key] = self.local_goals.pop(d.key)
+                    temporary_global.add(d.key)
         for e in end.edges:
             edge_keys = [str(e) for e in end.edges]
             for e in edge_keys:
                 d = end.edges[e].destiny
                 if d.key in self.local_goals:
-                    self.vertices[d.key] = self.local_goals.pop(d.key)
+                    temporary_global.add(d.key)
+        for g in temporary_global:
+            curr = self.local_goals[g]
+            for e in curr.edges:
+                edge = curr.edges[e]
+                edge.is_local = True
+                edge.destiny.edges[g].is_local = True
 
-        skip = set(self.local_goals.keys())
         # Find shortest vertices path that not passes between any local goal
-        path, w = self.a_graph_search((start.x, start.y), (end.x, end.y), skip=skip)
+        path, w = self.a_graph_search((start.x, start.y), (end.x, end.y))
 
         # Removes the direct origin and destiny local goals from the list of vertices
-        for e in start.edges:
-            edge_keys = [str(e) for e in start.edges]
-            for e in edge_keys:
-                edge = start.edges[e]
-                d = start.edges[e].destiny
-                if edge.is_local:
-                    self.local_goals[d.key] = self.vertices.pop(d.key)
-        for e in end.edges:
-            edge_keys = [str(e) for e in end.edges]
-            for e in edge_keys:
-                edge = end.edges[e]
-                d = end.edges[e].destiny
-                if edge.is_local:
-                    self.local_goals[d.key] = self.vertices.pop(d.key)
+        for g in temporary_global:
+            curr = self.local_goals[g]
+            for e in curr.edges:
+                edge = curr.edges[e]
+                edge.is_local = False
+                edge.destiny.edges[g].is_local = False
 
         # If origin or destiny are not vertices, remove them from the grid
         if start_is_vertex:

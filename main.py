@@ -119,166 +119,150 @@ def plot_side_by_side(
     plt.close()
 
 
-def plot_resume(fst_file: str, snd_file: str):
+def plot_resume(file: str = "results.txt") -> None:
     """
     Plot and compare the results of two algorithms.
     """
 
-    resume = []
-    for file in [fst_file, snd_file]:
-        with open(file, "r") as txt:
-            # Referencing graph
-            same_w = greater_w = lower_w = 0
-            graph_wheights = []
-            grid_wheights = []
-            graph_times = []
-            grid_times = []
-            graph_nodes = []
-            grid_nodes = []
-            for line in txt.readlines():
-                line = line.strip().split(";")
-                (
-                    _,
-                    _,
-                    graph_w,
-                    graph_node,
-                    graph_time,
-                    grid_w,
-                    grid_node,
-                    grid_time,
-                ) = line
-                graph_w = int(graph_w)
-                grid_w = int(grid_w)
-                graph_wheights.append(graph_w)
-                grid_wheights.append(grid_w)
-                graph_times.append(float(graph_time))
-                grid_times.append(float(grid_time))
-                graph_nodes.append(int(graph_node))
-                grid_nodes.append(int(grid_node))
-                same_w += graph_w == grid_w
-                lower_w += graph_w < grid_w
-                greater_w += graph_w > grid_w
-            data = [lower_w, same_w, greater_w]
-
-            _, axs = plt.subplots(2, 2)
-            axs[0][0].set_title("Weight comparison")
-            axs[0][0].bar(["Graph < Grid", "Equal", "Graph > Grid"], data)
-
-            graw = sorted(graph_wheights)
-            griw = sorted(grid_wheights)
-            axs[1][0].scatter(
-                [x for x in range(len(griw))],
-                griw,
-                marker="o",
-                label="Without Visibility Graph",
-                s=20.0,
-                c="b",
-            )
-            axs[1][0].scatter(
-                [x for x in range(len(graw))],
-                graw,
-                marker="o",
-                label="With Visibility Graph",
-                s=10.0,
-                c="r",
-            )
-            axs[1][0].legend(
-                loc="upper left", markerscale=2.0, scatterpoints=1, fontsize=10
-            )
-            axs[1][0].set_ylabel("Weight")
-            axs[1][0].axes.get_xaxis().set_visible(False)
-
-            axs[0][1].set_title("Time comparison")
-            axs[0][1].set_ylabel("Time (seconds)")
-            axs[0][1].set_xlabel("Weight")
-            axs[0][1].scatter(
-                graph_wheights,
-                graph_times,
-                marker="o",
-                label="With Visibility Graph",
-                s=20.0,
-                c="b",
-            )
-            axs[0][1].scatter(
-                grid_wheights,
-                grid_times,
-                marker="o",
-                label="Without Visibility Graph",
-                s=10.0,
-                c="r",
-            )
-            axs[0][1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
-
-            axs[1][1].set_title("Weight comparison")
-            axs[1][1].set_ylabel("Visited nodes")
-            axs[1][1].set_xlabel("Weight")
-            axs[1][1].scatter(
-                graph_wheights,
-                graph_nodes,
-                marker="o",
-                label="With Visibility Graph",
-                s=20.0,
-                c="b",
-            )
-            axs[1][1].scatter(
-                grid_wheights,
-                grid_nodes,
-                marker="o",
-                label="Without Visibility Graph",
-                s=10.0,
-                c="r",
-            )
-            axs[1][1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
-            resume.append(
-                (
-                    graph_wheights,
-                    grid_wheights,
-                    graph_times,
-                    grid_times,
-                    graph_nodes,
-                    grid_nodes,
+    with open(file, "r") as txt:
+        # Referencing graph
+        equal_w = greater_w = lower_w = 0
+        graph_wheights = []
+        grid_wheights = []
+        graph_times = []
+        grid_times = []
+        graph_nodes = []
+        grid_nodes = []
+        same_w: list[tuple] = []
+        for line in txt.readlines():
+            line = line.strip().split(";")
+            (
+                origin,
+                destiny,
+                graph_w,
+                graph_node,
+                graph_time,
+                grid_w,
+                grid_node,
+                grid_time,
+            ) = line
+            graph_w = int(graph_w)
+            grid_w = int(grid_w)
+            graph_wheights.append(graph_w)
+            grid_wheights.append(grid_w)
+            graph_times.append(float(graph_time))
+            grid_times.append(float(grid_time))
+            graph_nodes.append(int(graph_node))
+            grid_nodes.append(int(grid_node))
+            equal_w += graph_w == grid_w
+            lower_w += graph_w < grid_w
+            greater_w += graph_w > grid_w
+            if graph_w == grid_w:
+                same_w.append(
+                    (origin, destiny, graph_w, float(graph_time), float(grid_time))
                 )
-            )
+        graph_t = [x[3] for x in same_w]
+        grid_t = [x[4] for x in same_w]
+        worst_graph = max(same_w, key=lambda x: x[3])
+        worst_grid = max(same_w, key=lambda x: x[4])
+        best_graph = min(same_w, key=lambda x: x[3])
+        best_grid = min(same_w, key=lambda x: x[4])
+        print(f"Avarage time with visibility graph: {sum(graph_t) / len(same_w)}")
+        print(f"Avarage time without visibility graph: {sum(grid_t) / len(same_w)}")
+        print(
+            f"Worst time with visibility graph: {worst_graph[3]}s with a cost "
+            + f"of {worst_graph[2]} from {worst_graph[0]} to {worst_graph[1]}"
+        )
+        print(
+            f"Worst time without visibility graph: {worst_grid[4]}s with a cost "
+            + f"of {worst_grid[2]} from {worst_grid[0]} to {worst_grid[1]}"
+        )
+        print(
+            f"Best time with visibility graph: {best_graph[3]}s with a cost "
+            + f"of {best_graph[2]} from {best_graph[0]} to {best_graph[1]}"
+        )
+        print(
+            f"Best time without visibility graph: {best_grid[4]}s with a cost "
+            + f"of {best_grid[2]} from {best_grid[0]} to {best_grid[1]}"
+        )
 
-            plt.show()
+        data = [lower_w, equal_w, greater_w]
 
-    _, axs = plt.subplots(len(resume))
+        _, axs = plt.subplots(2, 2)
+        axs[0][0].set_title("Weight comparison")
+        axs[0][0].bar(["Graph < Grid", "Equal", "Graph > Grid"], data)
 
-    axs[0].set_title("Vertice Aproach Comparasion")
-    axs[0].scatter(
-        [x for x in range(len(resume[1][0]))],
-        sorted(resume[1][0]),
-        marker="o",
-        label=fst_file,
-        s=20.0,
-        c="b",
-    )
-    axs[0].scatter(
-        [x for x in range(len(resume[0][0]))],
-        sorted(resume[0][0]),
-        marker="o",
-        label=snd_file,
-        s=10.0,
-        c="r",
-    )
-    axs[0].set_ylabel("Weight")
-    axs[0].axes.get_xaxis().set_visible(False)
-    axs[0].legend(loc="upper left", markerscale=2.0, scatterpoints=1, fontsize=10)
+        graw = sorted(graph_wheights)
+        griw = sorted(grid_wheights)
+        axs[1][0].set_title("Weight distribution")
+        axs[1][0].scatter(
+            [x for x in range(len(griw))],
+            griw,
+            marker="o",
+            label="Without Visibility Graph",
+            s=20.0,
+            c="b",
+        )
+        axs[1][0].scatter(
+            [x for x in range(len(graw))],
+            graw,
+            marker="o",
+            label="With Visibility Graph",
+            s=10.0,
+            c="r",
+        )
+        axs[1][0].legend(
+            loc="upper left", markerscale=2.0, scatterpoints=1, fontsize=10
+        )
+        axs[1][0].set_ylabel("Weight")
+        axs[1][0].axes.get_xaxis().set_visible(False)
 
-    axs[1].scatter(
-        resume[1][0], resume[1][2], marker="o", label=fst_file, s=20.0, c="b"
-    )
-    axs[1].scatter(
-        resume[0][0], resume[0][2], marker="o", label=snd_file, s=10.0, c="r"
-    )
-    axs[1].set_xlabel("Weight")
-    axs[1].set_ylabel("Time (seconds)")
-    axs[1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
+        axs[0][1].set_title("Time comparison")
+        axs[0][1].set_ylabel("Time (seconds)")
+        axs[0][1].set_xlabel("Weight")
+        axs[0][1].scatter(
+            graph_wheights,
+            graph_times,
+            marker="o",
+            label="With Visibility Graph",
+            s=20.0,
+            c="b",
+        )
+        axs[0][1].scatter(
+            grid_wheights,
+            grid_times,
+            marker="o",
+            label="Without Visibility Graph",
+            s=10.0,
+            c="r",
+        )
+        axs[0][1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
 
-    plt.show()
-    plt.clf()
-    plt.cla()
-    plt.close()
+        axs[1][1].set_title("Nodes comparison")
+        axs[1][1].set_ylabel("Visited nodes")
+        axs[1][1].set_xlabel("Weight")
+        axs[1][1].scatter(
+            graph_wheights,
+            graph_nodes,
+            marker="o",
+            label="With Visibility Graph",
+            s=20.0,
+            c="b",
+        )
+        axs[1][1].scatter(
+            grid_wheights,
+            grid_nodes,
+            marker="o",
+            label="Without Visibility Graph",
+            s=10.0,
+            c="r",
+        )
+        axs[1][1].legend(loc="best", markerscale=2.0, scatterpoints=1, fontsize=10)
+
+        plt.show()
+        plt.clf()
+        plt.cla()
+        plt.close()
 
 
 def benchmark(
@@ -310,6 +294,7 @@ def benchmark(
                         next != origin
                         and (next, origin) not in visited_points
                         and (origin, next) not in visited_points
+                        and Grid.Grid.h_distance(origin, next) > 1000
                     ):
                         destiny = next
                 result_str = f"{origin};{destiny};"
@@ -347,9 +332,10 @@ def benchmark(
 
 def main():
     tsg = Grid.TSG()
-    tsg.create_from_file("maps/Denver_2_1024.map")
-    bench_points = read_bench_points()
+    tsg.create_from_file("maps/Milan_0_1024.map")
+    bench_points = generate_bench_points(100, tsg.grid)
     benchmark(bench_points, tsg, plot=True)
+    plot_resume()
 
 
 if __name__ == "__main__":
