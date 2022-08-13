@@ -167,6 +167,7 @@ def plot_resume(file: str = "results.txt") -> None:
         worst_grid = max(same_w, key=lambda x: x[4])
         best_graph = min(same_w, key=lambda x: x[3])
         best_grid = min(same_w, key=lambda x: x[4])
+        print(f"Same weight results: {len(same_w)}")
         print(f"Avarage time with visibility graph: {sum(graph_t) / len(same_w)}")
         print(f"Avarage time without visibility graph: {sum(grid_t) / len(same_w)}")
         print(
@@ -197,17 +198,17 @@ def plot_resume(file: str = "results.txt") -> None:
         axs[1][0].set_title("Weight distribution")
         axs[1][0].scatter(
             [x for x in range(len(griw))],
-            griw,
+            graw,
             marker="o",
-            label="Without Visibility Graph",
+            label="With Visibility Graph",
             s=20.0,
             c="b",
         )
         axs[1][0].scatter(
             [x for x in range(len(graw))],
-            graw,
+            griw,
             marker="o",
-            label="With Visibility Graph",
+            label="Without Visibility Graph",
             s=10.0,
             c="r",
         )

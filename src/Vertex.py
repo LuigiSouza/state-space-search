@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-SQRT_2 = 1.4
+NORMAL = 10
+DIAGONAL = 14
 
 Point = tuple[int, int]
 
@@ -84,7 +85,7 @@ class Vertex:
         """
         dist_x = abs(self.x - destiny.x)
         dist_y = abs(self.y - destiny.y)
-        return int(10 * (abs(dist_x - dist_y) + min(dist_x, dist_y) * SQRT_2))
+        return NORMAL * max(dist_x, dist_y) + (DIAGONAL - NORMAL) * min(dist_x, dist_y)
 
     def add_edge(self, destiny: "Vertex") -> None:
         key = destiny.key
